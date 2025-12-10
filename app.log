@@ -1,0 +1,104 @@
+[2025-12-09 21:25:08,618] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:25:08,629] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:25:15,392] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-09 21:25:15,395] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-09 21:25:15,429] INFO in _internal:  * Restarting with stat
+[2025-12-09 21:25:16,411] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:25:16,422] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:25:16,610] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:25:16] "GET / HTTP/1.1" 200 -
+[2025-12-09 21:25:16,701] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:25:16] "GET /api/config HTTP/1.1" 200 -
+[2025-12-09 21:25:16,825] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:25:16] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-09 21:25:39,130] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:25:39] "[35m[1mPOST /api/jobs HTTP/1.1[0m" 202 -
+[2025-12-09 21:25:40,141] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:25:40] "GET /api/status/FCm0QvFAhx1bHFlC HTTP/1.1" 200 -
+[2025-12-09 21:25:40,176] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:25:40] "GET /api/download/FCm0QvFAhx1bHFlC HTTP/1.1" 200 -
+[2025-12-09 21:25:43,450] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:25:43] "[36mGET /api/download/FCm0QvFAhx1bHFlC HTTP/1.1[0m" 304 -
+[2025-12-09 21:30:19,681] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
+[2025-12-09 21:30:19,804] INFO in _internal:  * Restarting with stat
+[2025-12-09 21:30:22,141] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:30:22,149] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:30:38,234] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
+[2025-12-09 21:30:38,287] INFO in _internal:  * Restarting with stat
+[2025-12-09 21:30:38,964] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:30:38,974] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:35:10,071] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
+[2025-12-09 21:35:10,140] INFO in _internal:  * Restarting with stat
+[2025-12-09 21:35:10,949] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:35:10,955] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:35:22,387] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-09 21:35:22,388] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-09 21:35:22,391] INFO in _internal:  * Restarting with stat
+[2025-12-09 21:35:24,055] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:35:24,175] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:35:24,427] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:35:24] "GET / HTTP/1.1" 200 -
+[2025-12-09 21:35:24,537] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:35:24] "GET /api/config HTTP/1.1" 200 -
+[2025-12-09 21:35:24,585] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:35:24] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-09 21:35:57,101] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:35:57] "[35m[1mPOST /api/jobs HTTP/1.1[0m" 202 -
+[2025-12-09 21:35:58,126] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:35:58] "GET /api/status/EMothuq_tF4wl9W3 HTTP/1.1" 200 -
+[2025-12-09 21:35:58,161] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:35:58] "GET /api/download/EMothuq_tF4wl9W3 HTTP/1.1" 200 -
+[2025-12-09 21:39:48,093] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-09 21:39:48,093] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-09 21:39:48,096] INFO in _internal:  * Restarting with stat
+[2025-12-09 21:39:49,099] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:39:49,105] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:42:15,935] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:42:15] "GET / HTTP/1.1" 200 -
+[2025-12-09 21:42:16,044] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:42:16] "GET /api/config HTTP/1.1" 200 -
+[2025-12-09 21:42:48,155] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:42:48] "[35m[1mPOST /api/jobs HTTP/1.1[0m" 202 -
+[2025-12-09 21:42:49,167] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:42:49] "GET /api/status/IgquEtJpXXofUzcS HTTP/1.1" 200 -
+[2025-12-09 21:42:49,190] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:42:49] "GET /api/download/IgquEtJpXXofUzcS HTTP/1.1" 200 -
+[2025-12-09 21:42:58,330] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:42:58] "[36mGET /api/download/IgquEtJpXXofUzcS HTTP/1.1[0m" 304 -
+[2025-12-09 21:45:16,720] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:45:16] "GET / HTTP/1.1" 200 -
+[2025-12-09 21:45:16,818] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:45:16] "GET /api/config HTTP/1.1" 200 -
+[2025-12-09 21:45:16,948] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:45:16] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-09 21:54:42,161] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-09 21:54:42,161] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-09 21:54:42,164] INFO in _internal:  * Restarting with stat
+[2025-12-09 21:54:42,938] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:54:42,945] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:54:57,796] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:54:57] "GET / HTTP/1.1" 200 -
+[2025-12-09 21:54:57,932] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:54:57] "GET /api/config HTTP/1.1" 200 -
+[2025-12-09 21:57:29,733] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-09 21:57:29,734] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-09 21:57:29,739] INFO in _internal:  * Restarting with stat
+[2025-12-09 21:57:30,769] WARNING in _internal:  * Debugger is active!
+[2025-12-09 21:57:30,776] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-09 21:57:31,007] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:57:31] "GET / HTTP/1.1" 200 -
+[2025-12-09 21:57:31,100] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:57:31] "GET /api/config HTTP/1.1" 200 -
+[2025-12-09 21:57:31,251] INFO in _internal: 127.0.0.1 - - [09/Dec/2025 21:57:31] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-10 17:15:33,285] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-10 17:15:33,286] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-10 17:15:33,288] INFO in _internal:  * Restarting with stat
+[2025-12-10 17:15:34,217] WARNING in _internal:  * Debugger is active!
+[2025-12-10 17:15:34,227] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-10 17:15:47,259] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 17:15:47] "GET / HTTP/1.1" 200 -
+[2025-12-10 17:15:47,611] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 17:15:47] "GET /api/config HTTP/1.1" 200 -
+[2025-12-10 17:15:47,797] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 17:15:47] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-10 17:25:57,393] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 17:25:57] "GET / HTTP/1.1" 200 -
+[2025-12-10 17:25:57,499] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 17:25:57] "GET /api/config HTTP/1.1" 200 -
+[2025-12-10 17:25:57,679] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 17:25:57] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-10 17:31:21,223] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
+[2025-12-10 17:31:21,344] INFO in _internal:  * Restarting with stat
+[2025-12-10 17:31:23,575] WARNING in _internal:  * Debugger is active!
+[2025-12-10 17:31:23,584] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-10 18:08:20,949] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:08:20] "GET / HTTP/1.1" 200 -
+[2025-12-10 18:08:20,999] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:08:20] "GET /api/config HTTP/1.1" 200 -
+[2025-12-10 18:08:21,152] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:08:21] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-10 18:46:11,008] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:46:11] "GET / HTTP/1.1" 200 -
+[2025-12-10 18:46:11,079] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:46:11] "GET /api/config HTTP/1.1" 200 -
+[2025-12-10 18:46:11,223] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:46:11] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-10 18:49:19,511] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-10 18:49:19,511] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-10 18:49:19,514] INFO in _internal:  * Restarting with stat
+[2025-12-10 18:49:20,207] WARNING in _internal:  * Debugger is active!
+[2025-12-10 18:49:20,216] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-10 18:49:23,900] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:49:23] "GET / HTTP/1.1" 200 -
+[2025-12-10 18:49:24,028] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:49:24] "GET /api/config HTTP/1.1" 200 -
+[2025-12-10 18:49:24,106] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:49:24] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-10 19:00:23,293] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
+[2025-12-10 19:00:23,370] INFO in _internal:  * Restarting with stat

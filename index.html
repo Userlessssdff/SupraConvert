@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UltraConvert | Secure Local Image Processor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* --- Palette: Modern Violet/Indigo --- */
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: #e0e7ff;
+            --secondary: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+
+            /* --- Status --- */
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+
+            /* --- Smoothing & Physics --- */
+            --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            --duration: 0.4s;
+
+            /* --- Depth --- */
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            --glass: rgba(255, 255, 255, 0.8);
+        }
+
+        /* --- Global Reset --- */
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f1f5f9;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        a { text-decoration: none; color: inherit; transition: color var(--duration) var(--ease-smooth); }
+        ul { margin: 0; padding-left: 1.2rem; }
+        li { margin-bottom: 0.5rem; }
+
+        /* --- Layout Container --- */
+        #app-frame {
+            width: 100%;
+            max-width: 1000px;
+            margin: 2rem 1rem;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.6);
+            border-radius: 24px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 80vh;
+            position: relative;
+        }
+
+        /* --- Smooth Header --- */
+        .app-header {
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.5);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .brand span { color: var(--primary); }
+
+        .nav-pills {
+            display: flex;
+            background: var(--secondary);
+            padding: 0.3rem;
+            border-radius: 99px;
+            border: 1px solid var(--border);
+        }
+
+        .nav-item {
+            padding: 0.6rem 1.5rem;
+            border-radius: 99px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s var(--ease-smooth);
+        }
+        .nav-item:hover { color: var(--text-main); }
+        .nav-item.active {
+            background: #fff;
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* --- Animated Views --- */
+        main { flex: 1; padding: 3rem; position: relative; }
+
+        .view-section {
+            /* Smooth Fade In/Out Logic */
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            position: absolute;
+            top: 3rem;
+            left: 3rem; right: 3rem;
+            transition: opacity 0.4s ease, transform 0.4s var(--ease-out-back);
+        }
+
+        .view-section.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            position: relative;
+            top: 0; left: 0; right: 0;
+        }
+
+        /* --- Components: Typography --- */
+        h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 0.5rem; background: linear-gradient(135deg, #1e293b 0%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--text-main); }
+        h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-main); margin-top: 1.5rem;}
+        h4 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); margin-top: 1rem;}
+        p { line-height: 1.7; color: var(--text-muted); margin-bottom: 1rem; }
+
+        /* --- Component: Dropzone --- */
+        .dropzone-container {
+            border: 3px dashed var(--border);
+            border-radius: 24px;
+            background: linear-gradient(to bottom, #fcfcfc, #f1f5f9);
+            padding: 4rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-out-back);
+            position: relative;
+            overflow: hidden;
+        }
+        .dropzone-container:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+        .dropzone-container.drag-over {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            transform: scale(1.02);
+        }
+        .drop-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+            filter: drop-shadow(0 4px 6px rgba(99, 102, 241, 0.3));
+            transition: transform 0.4s var(--ease-out-back);
+        }
+        .dropzone-container:hover .drop-icon { transform: scale(1.1) rotate(5deg); }
+
+        /* --- Component: Info Cards (Policy/Contact) --- */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .info-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s var(--ease-smooth);
+        }
+        .info-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-light);
+        }
+        .icon-badge {
+            width: 48px; height: 48px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* --- Component: Inputs & Selects --- */
+        .form-control {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1rem;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            margin-bottom: 1rem;
+        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-light); }
+
+        /* --- Component: Collapsible Settings --- */
+        .settings-accordion {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: #fff;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            transition: box-shadow 0.3s;
+        }
+        .accordion-head {
+            padding: 1rem 1.5rem;
+            background: #fafafa;
+            cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .accordion-head:hover { background: #f1f5f9; }
+        .accordion-body {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.5s var(--ease-smooth);
+            background: #fff;
+        }
+        .accordion-body.open {
+            max-height: 500px;
+            opacity: 1;
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+        .chevron { transition: transform 0.3s; }
+        .settings-accordion.active .chevron { transform: rotate(180deg); }
+
+        /* --- Component: Buttons --- */
+        .btn {
+            display: inline-flex; justify-content: center; align-items: center;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out-back);
+            gap: 0.5rem;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-primary {
+            background: var(--primary); color: #fff;
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.23); }
+        .btn-primary:disabled { background: var(--text-muted); cursor: not-allowed; transform: none; }
+
+        .btn-secondary { background: var(--secondary); color: var(--text-main); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e2e8f0; }
+
+        /* --- Component: Progress Bar --- */
+        .progress-track {
+            height: 12px; background: var(--border);
+            border-radius: 99px; overflow: hidden; margin: 2rem 0;
+        }
+        .progress-fill {
+            height: 100%; width: 0%;
+            background: var(--primary);
+            border-radius: 99px;
+            transition: width 0.5s ease-out;
+            background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+            background-size: 1rem 1rem;
+            animation: stripe-move 1s linear infinite;
+        }
+        @keyframes stripe-move { from { background-position: 1rem 0; } to { background-position: 0 0; } }
+
+        /* --- Preview Area --- */
+        .preview-box {
+            text-align: center;
+            margin-top: 2rem;
+            animation: popIn 0.5s var(--ease-out-back);
+        }
+        .preview-img {
+            max-width: 100%; height: auto;
+            max-height: 400px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            border: 4px solid #fff;
+        }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Mobile Tweaks */
+        @media (max-width: 600px) {
+            .app-header { flex-direction: column; gap: 1rem; padding: 1rem; }
+            main { padding: 1.5rem; }
+            h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-frame">
+        <header class="app-header">
+            <div class="brand" onclick="switchView('home')">
+                <span>⚡</span> UltraConvert
+            </div>
+            <nav class="nav-pills">
+                <div class="nav-item active" onclick="switchView('home')" id="nav-home">Converter</div>
+                <div class="nav-item" onclick="switchView('policy')" id="nav-policy">Policy</div>
+                <div class="nav-item" onclick="switchView('terms')" id="nav-terms">Terms of Use</div>
+                <div class="nav-item" onclick="switchView('about')" id="nav-about">About</div>
+            </nav>
+        </header>
+
+        <main>
+            <section id="view-home" class="view-section active">
+
+                <div id="state-upload">
+                    <div style="text-align: center; margin-bottom: 3rem;">
+                        <h1>Make Images Better.</h1>
+                        <p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
+                            The professional, privacy-first image tool. Convert formats, resize dimensions, and compress file sizes instantly on your local secure server.
+                        </p>
+                    </div>
+
+                    <input type="file" id="file-input" hidden accept="image/*">
+                    <div id="dropzone" class="dropzone-container">
+                        <span class="drop-icon">🖼️</span>
+                        <h3>Drag & Drop your Image</h3>
+                        <p>Supports JPG, PNG, WebP, GIF, TIFF, BMP, ICO</p>
+                        <button class="btn btn-secondary" style="margin-top: 1rem;">Browse Files</button>
+                    </div>
+                </div>
+
+                <div id="state-config" class="hidden" style="display: none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; background: #fff; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="font-size: 2rem;">📄</div>
+                            <div>
+                                <div style="font-weight: 700;" id="file-name">image.png</div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted);" id="file-size">2.4 MB</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="resetApp()">Change File</button>
+                    </div>
+
+                    <div style="max-width: 600px; margin: 0 auto;">
+                        <label style="font-weight: 700; display: block; margin-bottom: 0.5rem;">Target Format</label>
+                        <select id="format-select" class="form-control">
+                            </select>
+
+                        <div class="settings-accordion" id="acc-resize">
+                            <div class="accordion-head" onclick="toggleAccordion('acc-resize')">
+                                <span>📐 Resize & Scale</span>
+                                <span class="chevron">▼</span>
+                            </div>
+                            <div class="accordion-body">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div>
+                                        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Width (px)</label>
+                                        <input type="number" id="inp-width" class="form-control" placeholder="Original">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Height (px)</label>
+                                        <input type="number" id="inp-height" class="form-control" placeholder="Original">
+                                    </div>
+                                </div>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; cursor: pointer;">
+                                    <input type="checkbox" id="check-ar" checked style="width: 1.2rem; height: 1.2rem; accent-color: var(--primary);">
+                                    <span style="font-size: 0.9rem;">Maintain Aspect Ratio</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-accordion" id="acc-quality">
+                            <div class="accordion-head" onclick="toggleAccordion('acc-quality')">
+                                <span>🎨 Quality & Compression</span>
+                                <span class="chevron">▼</span>
+                            </div>
+                            <div class="accordion-body">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Compression Level</span>
+                                    <span style="font-weight: 700; color: var(--primary);" id="quality-disp">90%</span>
+                                </div>
+                                <input type="range" id="inp-quality" min="1" max="100" value="90" style="width: 100%; accent-color: var(--primary);">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                    <span>Low (Small Size)</span>
+                                    <span>High (Best Look)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                         <div class="settings-accordion" id="acc-opacity">
+                            <div class="accordion-head" onclick="toggleAccordion('acc-opacity')">
+                                <span>💧 Transparency / Opacity</span>
+                                <span class="chevron">▼</span>
+                            </div>
+                            <div class="accordion-body">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Opacity Level</span>
+                                    <span style="font-weight: 700; color: var(--primary);" id="opacity-disp">100%</span>
+                                </div>
+                                <input type="range" id="inp-opacity" min="0" max="100" value="100" style="width: 100%; accent-color: var(--primary);">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                    <span>Transparent (Invisible)</span>
+                                    <span>Opaque (Solid)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="btn-process" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 1.2rem;">
+                            🚀 Start Conversion
+                        </button>
+                    </div>
+                </div>
+
+                <div id="state-result" class="hidden" style="display: none; text-align: center; padding-top: 2rem;">
+                    <h2 id="status-head">Processing Image...</h2>
+
+                    <div class="progress-track">
+                        <div id="progress-bar" class="progress-fill"></div>
+                    </div>
+                    <p id="status-text">Uploading to secure environment...</p>
+
+                    <div id="final-actions" style="display: none;">
+                        <div class="preview-box" id="preview-area"></div>
+
+                        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap;">
+                            <a id="btn-download" class="btn btn-primary" href="#" target="_blank">⬇️ Download Image</a>
+                            <button class="btn btn-secondary" onclick="resetApp()">🔄 Convert Another</button>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--success); margin-top: 1rem;">
+                            ✅ File is ready.
+                        </p>
+                    </div>
+                </div>
+
+            </section>
+
+            <section id="view-policy" class="view-section">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h1>Privacy Policy</h1>
+                    <p>Last Updated: [09/12/2025]</p>
+                </div>
+
+                <div class="info-card" style="max-width: 900px; margin: 0 auto;">
+                    <p>At UltraConvert, your privacy is a top priority. This Privacy Policy explains in detail how we collect, use, store, and protect your information when you visit or use our website, services, and tools (collectively, the “Services”). By using our Services, you agree to the practices described in this policy.</p>
+
+                    <h3>1. Information We Collect</h3>
+                    <p>We collect information to provide a safe, efficient, and personalized experience. This includes:</p>
+
+                    <h4>1.1 Personal Information</h4>
+                    <ul>
+                        <li>Email addresses or contact details (only if you submit through contact forms or newsletters).</li>
+                        <li>Uploaded files (images or documents you submit for conversion).</li>
+                        <li>Files are processed temporarily and deleted automatically after conversion.</li>
+                    </ul>
+
+                    <h4>1.2 Automatically Collected Data</h4>
+                    <p>We may automatically collect certain information when you access our Services:</p>
+                    <ul>
+                        <li>IP addresses</li>
+                        <li>Browser type and version</li>
+                        <li>Operating system and device type</li>
+                        <li>Pages visited, time spent, and navigation patterns</li>
+                        <li>Referring website URLs</li>
+                    </ul>
+
+                    <h4>1.3 Cookies and Similar Technologies</h4>
+                    <p>We use cookies, local storage, and other tracking technologies to:</p>
+                    <ul>
+                        <li>Improve website performance</li>
+                        <li>Remember user preferences</li>
+                        <li>Enable analytics and ads</li>
+                    </ul>
+                    <p><strong>Types of cookies:</strong></p>
+                    <ul>
+                        <li><strong>Essential cookies:</strong> Required for core site functionality (file uploads, settings).</li>
+                        <li><strong>Performance cookies:</strong> Track user behavior anonymously to optimize site speed and experience.</li>
+                        <li><strong>Advertising cookies:</strong> Serve personalized ads through Google AdSense or other networks.</li>
+                    </ul>
+
+                    <h3>2. How We Use Your Information</h3>
+                    <p>Your data may be used for the following purposes:</p>
+                    <ul>
+                        <li><strong>Service Operation:</strong> To process uploaded files and deliver conversion results.</li>
+                        <li><strong>User Experience:</strong> To improve site functionality, interface, and performance.</li>
+                        <li><strong>Analytics:</strong> To analyze trends, usage patterns, and performance metrics.</li>
+                        <li><strong>Advertising:</strong> To serve personalized ads via Google AdSense or third-party networks.</li>
+                        <li><strong>Security:</strong> To detect fraud, malware, abuse, and unauthorized activity.</li>
+                        <li><strong>Communication:</strong> To respond to inquiries, notifications, or support requests.</li>
+                    </ul>
+
+                    <h3>3. File Handling and Storage</h3>
+                    <ul>
+                        <li>Uploaded files are stored temporarily on our servers only for the duration of processing.</li>
+                        <li>Files are automatically deleted after conversion.</li>
+                        <li>We do not share or sell uploaded files to third parties.</li>
+                        <li>Sensitive images or personal data should not be uploaded if you do not consent to temporary processing.</li>
+                    </ul>
+
+                    <h3>4. Third-Party Services</h3>
+                    <p>We may integrate third-party services for analytics, performance, security, or advertising. These may collect information according to their own privacy policies. Examples include:</p>
+                    <ul>
+                        <li><strong>Google AdSense:</strong> For ad serving and behavioral tracking.</li>
+                        <li><strong>Google Analytics:</strong> For anonymized site usage statistics.</li>
+                        <li><strong>Cloud or Virus Scanning APIs:</strong> For file validation and security.</li>
+                    </ul>
+                    <p><em>Note: We do not control third-party data collection. Please review their privacy policies separately.</em></p>
+
+                    <h3>5. Advertising and Tracking</h3>
+                    <ul>
+                        <li>Ads may use cookies and tracking to display relevant content.</li>
+                        <li>You may choose not to click on ads.</li>
+                        <li>Ad networks may collect anonymous data about your interactions.</li>
+                    </ul>
+
+                    <h3>6. Data Security</h3>
+                    <p>We implement industry-standard security measures to protect your data:</p>
+                    <ul>
+                        <li>HTTPS / SSL encryption for all communications.</li>
+                        <li>Firewalls and intrusion detection systems.</li>
+                        <li>Regular security audits.</li>
+                        <li>Automatic deletion of uploaded files after processing.</li>
+                        <li>Access to personal information is restricted to authorized personnel only.</li>
+                    </ul>
+                    <p><em>Disclaimer: While we take all reasonable measures, no method of transmission or storage is 100% secure.</em></p>
+
+                    <h3>7. Children’s Privacy</h3>
+                    <ul>
+                        <li>Our Services are not intended for children under 13.</li>
+                        <li>We do not knowingly collect personal information from children.</li>
+                        <li>If we discover that personal data from a child has been collected, we will delete it immediately.</li>
+                    </ul>
+
+                    <h3>8. User Rights</h3>
+                    <p>Depending on your jurisdiction, you may have the following rights:</p>
+                    <ul>
+                        <li><strong>Access & Portability:</strong> Request a copy of the personal data we hold about you.</li>
+                        <li><strong>Correction:</strong> Request corrections to inaccurate or incomplete information.</li>
+                        <li><strong>Deletion:</strong> Request deletion of your personal data, where applicable.</li>
+                        <li><strong>Objection / Restriction:</strong> Limit or object to certain processing of your data.</li>
+                        <li><strong>Withdrawal of Consent:</strong> Revoke consent where processing is based on consent.</li>
+                    </ul>
+                    <p>To exercise your rights: Contact us via our email or contact form. We will respond within a reasonable time frame.</p>
+
+                    <h3>9. Cookies and Opt-Out</h3>
+                    <ul>
+                        <li>You can disable cookies in your browser settings.</li>
+                        <li>Note: Disabling essential cookies may limit functionality.</li>
+                        <li>For behavioral advertising cookies, you may opt out through Google Ad Settings: <a href="https://www.google.com/settings/ads" target="_blank">https://www.google.com/settings/ads</a></li>
+                    </ul>
+
+                    <h3>10. Legal Compliance and Disclosure</h3>
+                    <p>We may disclose information if required to:</p>
+                    <ul>
+                        <li>Comply with applicable laws, regulations, or legal processes.</li>
+                        <li>Protect the safety, rights, or property of our users or third parties.</li>
+                        <li>Prevent fraud, malware, or security threats.</li>
+                    </ul>
+
+                    <h3>11. International Users</h3>
+                    <ul>
+                        <li>Our servers may be located outside your country.</li>
+                        <li>By using the Services, you consent to transfer, storage, and processing of your information internationally.</li>
+                        <li>We comply with data protection laws such as GDPR (Europe) and CCPA (California) where applicable.</li>
+                    </ul>
+
+                    <h3>12. Retention Period</h3>
+                    <ul>
+                        <li><strong>Uploaded files:</strong> deleted immediately after processing.</li>
+                        <li><strong>Analytics and logs:</strong> retained for up to 12 months for performance and security analysis.</li>
+                        <li><strong>Contact form submissions:</strong> retained until the inquiry is resolved, then anonymized.</li>
+                    </ul>
+
+                    <h3>13. Changes to This Privacy Policy</h3>
+                    <ul>
+                        <li>We may update this policy from time to time.</li>
+                        <li>The “Last Updated” date will be revised.</li>
+                        <li>Significant changes may also be communicated via website notification.</li>
+                    </ul>
+
+                    <h3>14. Contact Information</h3>
+                    <p>If you have any questions or concerns regarding this Privacy Policy, please contact us at:</p>
+                    <ul>
+                        <li><strong>Email:</strong> [your-email@example.com]</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="view-terms" class="view-section">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h1>Terms of Service (ToS)</h1>
+                    <p>Effective Date: [09/12/2025]</p>
+                </div>
+
+                <div class="info-card" style="max-width: 900px; margin: 0 auto;">
+                    <p>Welcome to UltraConvert. By accessing or using our website and services (the "Services"), you agree to be bound by these Terms of Service ("Terms"). Please read them carefully. If you do not agree, you may not use the Services.</p>
+
+                    <h3>1. Acceptance of Terms</h3>
+                    <p>By clicking "I Agree" or otherwise using the Services, you confirm that you have read, understood, and agree to these Terms and our Privacy Policy. These Terms apply to all users, including visitors, registered users, and others who access the Service.</p>
+
+                    <h3>2. Use of Service</h3>
+                    <h4>2.1 Eligibility</h4>
+                    <p>You must be at least 13 years old to use the Services. If you are between 13 and 18, you must have permission from a parent or legal guardian.</p>
+
+                    <h4>2.2 Account Security</h4>
+                    <p>The Service is designed for anonymous, one-off conversions. If, in the future, accounts are introduced, you would be responsible for maintaining the confidentiality of your account credentials.</p>
+
+                    <h4>2.3 Prohibited Activities</h4>
+                    <p>You agree not to use the Service for any unlawful or prohibited purpose. Prohibited activities include, but are not limited to:</p>
+                    <ul>
+                        <li>Uploading illegal, harmful, threatening, defamatory, obscene, or otherwise objectionable content.</li>
+                        <li>Attempting to upload or transmit viruses, worms, or any other malicious code.</li>
+                        <li>Interfering with or disrupting the integrity or performance of the Service.</li>
+                        <li>Reverse-engineering, decompiling, or attempting to derive the source code of the Service.</li>
+                        <li>Using the Service to process files for automated commercial services without explicit written consent.</li>
+                        <li>Attempting to bypass rate limits or other security measures.</li>
+                    </ul>
+
+                    <h3>3. Intellectual Property Rights</h3>
+                    <h4>3.1 Your Content</h4>
+                    <p>You retain all ownership rights to the images and files you upload to the Service ("Your Content"). We claim no ownership over Your Content.</p>
+
+                    <h4>3.2 License to UltraConvert</h4>
+                    <p>By uploading Your Content, you grant UltraConvert a temporary, non-exclusive, royalty-free, worldwide license to use, reproduce, process, and store Your Content solely for the purpose of providing the conversion service requested by you. This license automatically terminates immediately upon the completion of the processing job and deletion of the file from our servers (as detailed in the Privacy Policy).</p>
+
+                    <h4>3.3 Service IP</h4>
+                    <p>All intellectual property rights in the Service itself, including the code, design, trademarks, and branding (excluding Your Content), are owned by or licensed to UltraConvert. You may not use any of our intellectual property without prior written permission.</p>
+
+                    <h3>4. File Processing and Storage Disclaimer</h3>
+                    <h4>4.1 Service Limitations</h4>
+                    <p>We rely on third-party libraries (like Pillow) for image processing. We do not guarantee that every file conversion will be successful or that the output will be exactly as expected, especially for complex or corrupt files.</p>
+
+                    <h4>4.2 Temporary Nature</h4>
+                    <p>Uploaded files are temporary and are automatically deleted shortly after processing. You are solely responsible for keeping a backup of your original files and for downloading your converted files immediately. We are not liable for any loss of files due to cleanup procedures or system failures.</p>
+
+                    <h3>5. Termination</h3>
+                    <p>We may terminate or suspend your access to the Service immediately, without prior notice or liability, for any reason, including without limitation if you breach the Terms. All provisions of the Terms which, by their nature, should survive termination shall survive termination, including, without limitation, ownership provisions, warranty disclaimers, indemnity, and limitations of liability.</p>
+
+                    <h3>6. Disclaimer of Warranties</h3>
+                    <p>The Service is provided on an "AS IS" and "AS AVAILABLE" basis. UltraConvert makes no warranties, expressed or implied, regarding the operation or availability of the Service, or the content, information, or materials included therein. To the full extent permissible by law, we disclaim all warranties, including, but not limited to, implied warranties of merchantability and fitness for a particular purpose.</p>
+
+                    <h3>7. Limitation of Liability</h3>
+                    <p>In no event shall UltraConvert, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Service; (ii) any conduct or content of any third party on the Service; (iii) any content obtained from the Service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage.</p>
+
+                    <h3>8. Governing Law</h3>
+                    <p>These Terms shall be governed and construed in accordance with the laws of [Jurisdiction, e.g., the State of California, USA], without regard to its conflict of law provisions.</p>
+
+                    <h3>9. Changes to Terms</h3>
+                    <p>We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will try to provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion. By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms.</p>
+
+                    <h3>10. Contact Information</h3>
+                    <p>If you have any questions about these Terms, please contact us at:</p>
+                    <ul>
+                        <li><strong>Email:</strong> [your-email@example.com]</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="view-about" class="view-section">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h1>About UltraConvert</h1>
+                    <p>Open source. Lightweight. Secure. Built for modern workflows.</p>
+                </div>
+
+                <div class="info-card" style="margin-bottom: 2rem;">
+                    <h3>What is this tool?</h3>
+                    <p>UltraConvert is a specialized, lightweight web interface for the powerful Python <strong>Pillow</strong> library. It allows you to perform complex image manipulations—format conversion, high-quality resizing, and algorithm-based compression—without needing to use the command line or install heavy desktop software like Photoshop. It focuses on providing a fast, secure, and privacy-focused conversion utility.</p>
+
+                    <h3>Key Features & Capabilities</h3>
+                    <ul>
+                        <li><strong>Batch Conversion Ready:</strong> Built with a job-queue architecture to handle multiple large files concurrently.</li>
+                        <li><strong>High-Fidelity Resizing:</strong> Uses the advanced <a href="https://pillow.readthedocs.io/en/stable/handbook/concepts.html#resampling-filters">LANCZOS resampling filter</a> for superior image quality during scaling.</li>
+                        <li><strong>Lossy & Lossless Compression:</strong> Fine-tune JPG/WebP quality from 1% to 100% for optimal size/quality balance.</li>
+                        <li><strong>Transparency Support:</strong> Full support for PNG, GIF, and WebP transparency, including automatic compositing over a white background when converting to opaque formats (JPEG/BMP).</li>
+                        <li><strong>Opacity Adjustment:</strong> Unique feature to control the overall transparency of an image before saving.</li>
+                        <li><strong>Secure & Self-Cleaning:</strong> All uploaded files and conversion outputs are automatically deleted from the server after a short period (30 minutes) for user privacy.</li>
+                    </ul>
+                </div>
+
+                <h3>Architecture and Technology Stack</h3>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <div class="info-card">
+                        <div class="icon-badge">🐍</div>
+                        <h3>Powered by Python/Flask</h3>
+                        <p>The backend runs on a lightweight <a href="https://flask.palletsprojects.com/">Flask</a> server backed by Python 3. It manages file uploads, job queuing, and API routing. This minimal setup ensures low resource usage and high stability.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon-badge">⚙️</div>
+                        <h3>Thread-Safe Processing</h3>
+                        <p>Image processing is delegated to a multi-threaded worker pool (<a href="https://docs.python.org/3/library/concurrent.futures.html#threadpoolexecutor">ThreadPoolExecutor</a>), ensuring the main web server thread remains responsive, even during long conversions. A global lock (`JOB_LOCK`) maintains the integrity of the job queue state.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon-badge">⚡</div>
+                        <h3>Asynchronous Frontend</h3>
+                        <p>The frontend is built with pure HTML5 and vanilla JavaScript/CSS. It relies entirely on the Fetch API for all communication, enabling a modern, single-page application (SPA) feel without the overhead of heavy frameworks.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon-badge">🔒</div>
+                        <h3>Security & Performance</h3>
+                        <p>The application includes built-in security features such as rate limiting (via <a href="https://flask-limiter.readthedocs.io/">Flask-Limiter</a>), file type validation (using `python-magic`), and secure, token-based filenames to prevent directory traversal and unauthorized access to output files.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            &copy; <script>document.write(new Date().getFullYear())</script> UltraConvert. Secure. Fast. Private.
+        </footer>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE ---
+        let CONVERSIONS = [];
+        let FILE = null;
+        let JOB_ID = null;
+        let TIMER = null;
+
+        // --- NAVIGATION ---
+        function switchView(viewId) {
+            // Update Header Tabs
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`nav-${viewId}`).classList.add('active');
+
+            // Animate Views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`view-${viewId}`);
+            target.classList.add('active');
+
+            // Scroll to top smoothly
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- UI INTERACTION ---
+        function toggleAccordion(id) {
+            const acc = document.getElementById(id);
+            const body = acc.querySelector('.accordion-body');
+            acc.classList.toggle('active');
+            body.classList.toggle('open');
+        }
+
+        function showState(stateId) {
+            ['state-upload', 'state-config', 'state-result'].forEach(id => {
+                document.getElementById(id).style.display = 'none';
+            });
+            const el = document.getElementById(stateId);
+            el.style.display = 'block';
+
+            // Trigger animation
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                el.style.transition = 'all 0.4s ease-out';
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 10);
+        }
+
+        // --- INITIALIZATION ---
+        async function init() {
+            try {
+                const req = await fetch('/api/config');
+                const res = await req.json();
+                CONVERSIONS = res.conversions;
+                populateSelect();
+            } catch (e) {
+                console.error("Backend Disconnected", e);
+            }
+            setupEvents();
+        }
+
+        function populateSelect() {
+            const sel = document.getElementById('format-select');
+            sel.innerHTML = CONVERSIONS.map(c =>
+                `<option value="${c.key}" data-quality="${c.supports_quality}">${c.name}</option>`
+            ).join('');
+
+            // Quality Toggle Listener
+            sel.addEventListener('change', () => {
+                const opt = sel.options[sel.selectedIndex];
+                const accQ = document.getElementById('acc-quality');
+                // Only show Quality slider if format supports it (like JPG, WebP)
+                if(opt.dataset.quality === 'true') {
+                    accQ.style.display = 'block';
+                } else {
+                    accQ.style.display = 'none';
+                }
+            });
+            sel.dispatchEvent(new Event('change')); // Trigger once
+        }
+
+        function setupEvents() {
+            const dz = document.getElementById('dropzone');
+            const inp = document.getElementById('file-input');
+
+            // Drag & Drop
+            dz.onclick = () => inp.click();
+            dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag-over'); };
+            dz.ondragleave = () => dz.classList.remove('drag-over');
+            dz.ondrop = (e) => {
+                e.preventDefault();
+                dz.classList.remove('drag-over');
+                handleFile(e.dataTransfer.files[0]);
+            };
+            inp.onchange = (e) => handleFile(e.target.files[0]);
+
+            // Sliders
+            document.getElementById('inp-quality').oninput = (e) => {
+                document.getElementById('quality-disp').textContent = e.target.value + '%';
+            };
+            document.getElementById('inp-opacity').oninput = (e) => {
+                document.getElementById('opacity-disp').textContent = e.target.value + '%';
+            };
+
+            // Actions
+            document.getElementById('btn-process').onclick = startJob;
+        }
+
+        // --- CORE LOGIC ---
+        function handleFile(f) {
+            if(!f || !f.type.startsWith('image/')) return alert("Image files only, please.");
+            FILE = f;
+            document.getElementById('file-name').textContent = f.name;
+            document.getElementById('file-size').textContent = (f.size / (1024*1024)).toFixed(2) + " MB";
+            showState('state-config');
+        }
+
+        function resetApp() {
+            FILE = null;
+            clearInterval(TIMER);
+            document.getElementById('file-input').value = '';
+            document.getElementById('inp-width').value = '';
+            document.getElementById('inp-height').value = '';
+
+            // Reset sliders to default
+            document.getElementById('inp-quality').value = 90;
+            document.getElementById('quality-disp').textContent = '90%';
+            document.getElementById('inp-opacity').value = 100;
+            document.getElementById('opacity-disp').textContent = '100%';
+
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('final-actions').style.display = 'none';
+            document.getElementById('preview-area').innerHTML = '';
+            showState('state-upload');
+        }
+
+        async function startJob() {
+            document.getElementById('btn-process').disabled = true;
+            showState('state-result');
+
+            const fd = new FormData();
+            fd.append('file', FILE);
+            fd.append('conversion_key', document.getElementById('format-select').value);
+            fd.append('settings', JSON.stringify({
+                width: document.getElementById('inp-width').value,
+                height: document.getElementById('inp-height').value,
+                maintain_ar: document.getElementById('check-ar').checked,
+                quality: document.getElementById('inp-quality').value,
+                opacity: document.getElementById('inp-opacity').value // New param sent to backend
+            }));
+
+            try {
+                const req = await fetch('/api/jobs', { method:'POST', body:fd });
+                const res = await req.json();
+
+                if(!req.ok) {
+                    throw new Error(res.msg || "Server Error");
+                }
+
+                JOB_ID = res.job_id;
+                TIMER = setInterval(poll, 1000);
+            } catch (e) {
+                alert("Error: " + e.message);
+                resetApp();
+            } finally {
+                document.getElementById('btn-process').disabled = false;
+            }
+        }
+
+        async function poll() {
+            try {
+                const req = await fetch(`/api/status/${JOB_ID}`);
+                const res = await req.json();
+
+                const bar = document.getElementById('progress-bar');
+                const txt = document.getElementById('status-text');
+
+                if(res.status === 'running' || res.status === 'queued') {
+                    bar.style.width = Math.max(10, res.progress) + "%";
+                    txt.textContent = res.status === 'queued' ? "Waiting in queue..." : "Processing pixels...";
+                } else if (res.status === 'completed') {
+                    clearInterval(TIMER);
+                    bar.style.width = "100%";
+                    document.getElementById('status-head').textContent = "Success!";
+                    txt.textContent = "Image processing complete.";
+
+                    const acts = document.getElementById('final-actions');
+                    acts.style.display = 'block';
+                    // Animation for result
+                    acts.style.opacity = 0;
+                    setTimeout(() => acts.style.opacity = 1, 100);
+
+                    document.getElementById('btn-download').href = res.download_url;
+                    document.getElementById('preview-area').innerHTML = `<img src="${res.download_url}" class="preview-img">`;
+                } else if (res.status === 'failed') {
+                    clearInterval(TIMER);
+                    alert("Failed: " + res.log);
+                    resetApp();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

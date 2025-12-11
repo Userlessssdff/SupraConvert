@@ -102,3 +102,63 @@
 [2025-12-10 18:49:24,106] INFO in _internal: 127.0.0.1 - - [10/Dec/2025 18:49:24] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
 [2025-12-10 19:00:23,293] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
 [2025-12-10 19:00:23,370] INFO in _internal:  * Restarting with stat
+[2025-12-11 16:12:58,843] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
+[2025-12-11 16:12:58,937] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-11 16:12:58,937] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-11 16:12:58,939] INFO in _internal:  * Restarting with stat
+[2025-12-11 16:12:59,696] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
+[2025-12-11 16:12:59,729] WARNING in _internal:  * Debugger is active!
+[2025-12-11 16:12:59,736] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-11 16:13:00,678] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:00] "GET / HTTP/1.1" 200 -
+[2025-12-11 16:13:00,988] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:00] "GET /api/config HTTP/1.1" 200 -
+[2025-12-11 16:13:01,143] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:01] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-11 16:13:12,405] WARNING in app: python-magic not installed, using fallback validation.
+[2025-12-11 16:13:12,407] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:12] "[35m[1mPOST /api/jobs HTTP/1.1[0m" 202 -
+[2025-12-11 16:13:13,415] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:13] "GET /api/status/CUvcPv75mti0IBJG HTTP/1.1" 200 -
+[2025-12-11 16:13:13,431] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:13] "GET /api/download/CUvcPv75mti0IBJG HTTP/1.1" 200 -
+[2025-12-11 16:13:15,934] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:15] "[36mGET /api/download/CUvcPv75mti0IBJG HTTP/1.1[0m" 304 -
+[2025-12-11 16:13:26,789] WARNING in app: python-magic not installed, using fallback validation.
+[2025-12-11 16:13:26,791] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:26] "[35m[1mPOST /api/jobs HTTP/1.1[0m" 202 -
+[2025-12-11 16:13:26,791] ERROR in app: Job zK-zZhoNzip-x93p failed: Exception('Server configuration error: HF_TOKEN missing.')
+[2025-12-11 16:13:27,801] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:27] "GET /api/status/zK-zZhoNzip-x93p HTTP/1.1" 200 -
+[2025-12-11 16:13:29,804] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:29] "GET / HTTP/1.1" 200 -
+[2025-12-11 16:13:29,843] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:13:29] "GET /api/config HTTP/1.1" 200 -
+[2025-12-11 16:18:31,255] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
+[2025-12-11 16:18:31,741] INFO in _internal:  * Restarting with stat
+[2025-12-11 16:18:33,902] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
+[2025-12-11 16:18:33,937] WARNING in _internal:  * Debugger is active!
+[2025-12-11 16:18:33,944] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-11 16:18:44,855] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
+[2025-12-11 16:18:44,908] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-11 16:18:44,908] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-11 16:18:44,911] INFO in _internal:  * Restarting with stat
+[2025-12-11 16:18:45,887] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
+[2025-12-11 16:18:45,924] WARNING in _internal:  * Debugger is active!
+[2025-12-11 16:18:45,933] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-11 16:18:56,487] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:18:56] "GET / HTTP/1.1" 200 -
+[2025-12-11 16:18:56,634] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:18:56] "GET /api/config HTTP/1.1" 200 -
+[2025-12-11 16:18:56,707] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:18:56] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-11 16:19:20,358] WARNING in app: python-magic not installed, using fallback validation.
+[2025-12-11 16:19:20,361] ERROR in app: Job eB1MWLIoWmTHp_2u failed: Exception('Server configuration error: HF_TOKEN missing.')
+[2025-12-11 16:19:20,362] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:19:20] "[35m[1mPOST /api/jobs HTTP/1.1[0m" 202 -
+[2025-12-11 16:19:21,382] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:19:21] "GET /api/status/eB1MWLIoWmTHp_2u HTTP/1.1" 200 -
+[2025-12-11 16:19:23,138] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:19:23] "GET / HTTP/1.1" 200 -
+[2025-12-11 16:19:23,178] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:19:23] "GET /api/config HTTP/1.1" 200 -
+[2025-12-11 16:26:17,133] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:26:17] "GET / HTTP/1.1" 200 -
+[2025-12-11 16:26:17,291] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:26:17] "GET /api/config HTTP/1.1" 200 -
+[2025-12-11 16:26:17,364] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:26:17] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-12-11 16:34:23,914] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
+[2025-12-11 16:34:23,963] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[2025-12-11 16:34:23,964] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2025-12-11 16:34:23,966] INFO in _internal:  * Restarting with stat
+[2025-12-11 16:34:24,819] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
+[2025-12-11 16:34:24,880] WARNING in _internal:  * Debugger is active!
+[2025-12-11 16:34:24,889] INFO in _internal:  * Debugger PIN: 791-710-311
+[2025-12-11 16:34:24,982] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:34:24] "GET / HTTP/1.1" 200 -
+[2025-12-11 16:34:25,086] INFO in _internal: 127.0.0.1 - - [11/Dec/2025 16:34:25] "GET /api/config HTTP/1.1" 200 -
+[2025-12-11 16:35:33,754] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
+[2025-12-11 16:35:33,822] INFO in _internal:  * Restarting with stat
+[2025-12-11 16:35:34,680] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.

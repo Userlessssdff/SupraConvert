@@ -1,4 +1,4 @@
-# app.py - Ultra Image Convert Backend (Robust & Thread-Safe)
+# app.py - Ultra Image Convert & Upscale Backend
 
 import os
 import secrets
@@ -15,21 +15,29 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-from PIL import Image, ImageOps, ImageEnhance  # Added ImageEnhance
-
+from PIL import Image, ImageOps
+import requests  # Required for HF API
 
 # 0. Configuration & Initialization
 
-
 load_dotenv()
 
-# Logging Setup (Production Ready)
+# Logging Setup
 handler = RotatingFileHandler('app.log', maxBytes=100000, backupCount=3)
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
     handlers=[handler, logging.StreamHandler()]
 )
+
+# --- Environment & Secrets ---
+HF_TOKEN = os.getenv("HF_TOKEN")
+# Using Swin2SR x2 - Good balance of speed and quality for free tier
+HF_MODEL_URL = os.getenv("HF_MODEL_URL",
+                         "https://api-inference.huggingface.co/models/caidas/swin2SR-classical-sr-x2-64")
+
+if not HF_TOKEN:
+    logging.warning("HF_TOKEN is missing in .env! Upscaling will fail.")
 
 # --- Thread Safety ---
 JOB_LOCK = threading.Lock()
@@ -63,9 +71,7 @@ CONVERSION_MAP = {
                    'mime': 'image/x-icon'},
 }
 
-
 # 1. Flask App Factory & Extensions
-
 
 app = Flask(__name__, static_url_path='/static', static_folder='static', template_folder='.')
 
@@ -114,7 +120,6 @@ def custom_secure_filename(filename):
 
 
 def get_file_magic_mime(file_stream):
-    """Safely attempts to detect MIME type."""
     file_stream.seek(0)
     header = file_stream.read(2048)
     file_stream.seek(0)
@@ -129,11 +134,46 @@ def get_file_magic_mime(file_stream):
         return 'application/octet-stream'
 
 
-# 2. Image Processing Worker (Updated)
+def upscale_image_remote(input_path, output_path):
+    """Calls HF API to upscale image."""
 
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+
+    with open(input_path, "rb") as f:
+        data = f.read()
+
+    # Retry logic for model loading (HF specific)
+    retries = 5
+    for attempt in range(retries):
+        try:
+            response = requests.post(HF_MODEL_URL, headers=headers, data=data)
+
+            # If successful
+            if response.status_code == 200:
+                with open(output_path, "wb") as f_out:
+                    f_out.write(response.content)
+                return True, None
+
+            # If model is loading, wait and retry
+            error_data = response.json()
+            if "error" in error_data and "loading" in error_data["error"].lower():
+                wait_time = error_data.get("estimated_time", 5)
+                logging.info(f"Model loading... waiting {wait_time}s")
+                time.sleep(wait_time)
+                continue
+            else:
+                return False, f"HF API Error: {error_data.get('error', 'Unknown error')}"
+
+        except Exception as e:
+            return False, str(e)
+
+    return False, "Model took too long to load."
+
+
+# 2. Image Processing Worker
 
 def run_image_job(job_id):
-    """Worker thread with Opacity & Quality logic."""
+    """Worker thread that handles both Conversion and Upscaling."""
     with JOB_LOCK:
         job = JOB_QUEUE.get(job_id)
 
@@ -144,150 +184,162 @@ def run_image_job(job_id):
         job['progress'] = 10
 
     input_filepath = job['input_filepath']
-    conversion_key = job['conversion_key']
-    settings = job['settings']
+    mode = job.get('mode', 'convert')  # 'convert' or 'upscale'
+    settings = job.get('settings', {})
 
-    details = CONVERSION_MAP.get(conversion_key)
-    if not details:
-        with JOB_LOCK:
-            job['status'] = 'failed'
-            job['log'] = "Invalid conversion key."
-        return
-
-    target_format = details['format']
-    output_ext = details['ext']
-
+    # Common Setup
     base_name = os.path.splitext(os.path.basename(job['input_original_filename']))[0]
-    output_filename = f"processed_{base_name}_{secrets.token_urlsafe(4)}.{output_ext}"
-    output_filepath = os.path.join(OUTPUT_FOLDER, output_filename)
-
-    with JOB_LOCK:
-        job['output_filepath'] = output_filepath
 
     try:
-        with JOB_LOCK:
-            job['progress'] = 20
-        img = Image.open(input_filepath)
+        # --- BRANCH: UPSCALING ---
+        if mode == 'upscale':
+            if not HF_TOKEN:
+                raise Exception("Server configuration error: HF_TOKEN missing.")
 
-        # Handle animations (seek 0 unless GIF/WEBP target)
-        if getattr(img, "is_animated", False) and target_format not in ['GIF', 'WEBP']:
-            img.seek(0)
+            # 1. First, get the raw AI upscaled result
+            raw_upscale_filename = f"temp_upscaled_{base_name}_{secrets.token_urlsafe(4)}.png"
+            raw_upscale_path = os.path.join(TEMP_DIR, raw_upscale_filename)
 
+            with JOB_LOCK:
+                job['progress'] = 30  # Sending to API
 
-        # A. RESIZING (Done first to save processing time on pixels)
+            success, error_msg = upscale_image_remote(input_filepath, raw_upscale_path)
+            if not success: raise Exception(error_msg)
 
-        req_width = settings.get('width')
-        req_height = settings.get('height')
-        maintain_ar = settings.get('maintain_ar')
+            with JOB_LOCK:
+                job['progress'] = 70  # Processing Result
 
-        try:
-            w_int = int(req_width) if req_width else 0
-            h_int = int(req_height) if req_height else 0
-        except ValueError:
-            w_int, h_int = 0, 0
+            # 2. Now handle the resolution target (1080p, 2K, 4K)
+            target_res = settings.get('upscale_res', 'original')  # '1080p', '2k', '4k', 'original'
 
-        if w_int > 0 or h_int > 0:
-            current_w, current_h = img.size
-            final_w = w_int if w_int > 0 else current_w
-            final_h = h_int if h_int > 0 else current_h
+            final_filename = f"upscaled_{target_res}_{base_name}_{secrets.token_urlsafe(4)}.png"
+            final_filepath = os.path.join(OUTPUT_FOLDER, final_filename)
 
-            if maintain_ar:
-                img = ImageOps.contain(img, (final_w, final_h), method=Image.Resampling.LANCZOS)
-            else:
-                img = img.resize((final_w, final_h), resample=Image.Resampling.LANCZOS)
+            # Map targets to max dimensions (width, height)
+            res_map = {
+                '1080p': (1920, 1080),
+                '2k': (2560, 1440),
+                '4k': (3840, 2160)
+            }
 
-        with JOB_LOCK:
-            job['progress'] = 40
+            img = Image.open(raw_upscale_path)
 
+            if target_res in res_map:
+                target_w, target_h = res_map[target_res]
+                # ImageOps.contain keeps aspect ratio but fits inside the box
+                # method=Image.Resampling.LANCZOS for best quality
+                img = ImageOps.contain(img, (target_w, target_h), method=Image.Resampling.LANCZOS)
 
-        # B. OPACITY ADJUSTMENT (New Feature)
+            img.save(final_filepath, format="PNG")
+            img.close()
 
-        try:
-            opacity_val = int(settings.get('opacity', 100))
-        except (ValueError, TypeError):
-            opacity_val = 100
-
-        # Only apply if user requested < 100% opacity
-        if 0 <= opacity_val < 100:
-            # 1. Ensure we are in RGBA mode to manipulate alpha
-            if img.mode != 'RGBA':
-                img = img.convert('RGBA')
-
-            # 2. Get the Alpha channel
-            alpha = img.split()[3]
-
-            # 3. Apply the factor (opacity / 100)
-            # This multiplies every pixel's alpha by the opacity percentage
-            factor = opacity_val / 100.0
-            alpha = alpha.point(lambda p: int(p * factor))
-
-            # 4. Put the modified alpha back
-            img.putalpha(alpha)
-
-        with JOB_LOCK:
-            job['progress'] = 60
-
-
-        # C. COLOR MODE & FORMAT HANDLING
-
-        # If target doesn't support transparency (JPEG, BMP), we must composite
-        # the (potentially translucent) image over a background color (White).
-
-        if target_format in ['JPEG', 'BMP']:
-            # Check if we have transparency to handle
-            if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
-                # Create white background
-                background = Image.new('RGB', img.size, (255, 255, 255))
-                # Paste image using its own alpha channel as mask
-                # If we just reduced opacity in step B, this will make the image look "faded" against white
-                if img.mode != 'RGBA': img = img.convert('RGBA')
-                background.paste(img, mask=img.split()[3])
-                img = background
-            elif img.mode != 'RGB':
-                img = img.convert('RGB')
-
-        elif target_format == 'ICO':
-            img = ImageOps.contain(img, (256, 256))
-
-        with JOB_LOCK:
-            job['progress'] = 80
-
-        # D. SAVING & QUALITY
-
-        save_kwargs = {}
-
-        # Quality logic (Compression)
-        if details['supports_quality']:
+            # Cleanup raw upscale
             try:
-                q = int(settings.get('quality', 90))
-                # PIL quality is 1-95 usually, strictly 1-100 allowed
+                os.remove(raw_upscale_path)
+            except:
+                pass
+
+            with JOB_LOCK:
+                job['output_filepath'] = final_filepath
+                job['progress'] = 100
+                job['status'] = 'completed'
+                job['end_time'] = datetime.now(timezone.utc).isoformat()
+
+        # --- BRANCH: CONVERSION (Original Logic) ---
+        else:
+            conversion_key = job['conversion_key']
+            details = CONVERSION_MAP.get(conversion_key)
+            if not details: raise Exception("Invalid conversion key")
+
+            output_ext = details['ext']
+            target_format = details['format']
+            output_filename = f"processed_{base_name}_{secrets.token_urlsafe(4)}.{output_ext}"
+            output_filepath = os.path.join(OUTPUT_FOLDER, output_filename)
+
+            with JOB_LOCK:
+                job['output_filepath'] = output_filepath
+                job['progress'] = 20
+
+            img = Image.open(input_filepath)
+
+            # Animation Handling
+            if getattr(img, "is_animated", False) and target_format not in ['GIF', 'WEBP']:
+                img.seek(0)
+
+            # Resizing
+            req_width = settings.get('width')
+            req_height = settings.get('height')
+            maintain_ar = settings.get('maintain_ar')
+            try:
+                w_int = int(req_width) if req_width else 0
+                h_int = int(req_height) if req_height else 0
+            except ValueError:
+                w_int, h_int = 0, 0
+
+            if w_int > 0 or h_int > 0:
+                current_w, current_h = img.size
+                final_w = w_int if w_int > 0 else current_w
+                final_h = h_int if h_int > 0 else current_h
+                if maintain_ar:
+                    img = ImageOps.contain(img, (final_w, final_h), method=Image.Resampling.LANCZOS)
+                else:
+                    img = img.resize((final_w, final_h), resample=Image.Resampling.LANCZOS)
+
+            with JOB_LOCK:
+                job['progress'] = 50
+
+            # Opacity
+            try:
+                opacity_val = int(settings.get('opacity', 100))
+            except:
+                opacity_val = 100
+            if 0 <= opacity_val < 100:
+                if img.mode != 'RGBA': img = img.convert('RGBA')
+                alpha = img.split()[3]
+                alpha = alpha.point(lambda p: int(p * (opacity_val / 100.0)))
+                img.putalpha(alpha)
+
+            # Color Mode
+            if target_format in ['JPEG', 'BMP']:
+                if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode != 'RGBA': img = img.convert('RGBA')
+                    background.paste(img, mask=img.split()[3])
+                    img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+            elif target_format == 'ICO':
+                img = ImageOps.contain(img, (256, 256))
+
+            with JOB_LOCK:
+                job['progress'] = 80
+
+            # Saving
+            save_kwargs = {}
+            if details['supports_quality']:
+                try:
+                    q = int(settings.get('quality', 90))
+                except:
+                    q = 90
                 save_kwargs['quality'] = max(1, min(100, q))
-            except (ValueError, TypeError):
-                save_kwargs['quality'] = 90
 
-        # GIF Optimization
-        if target_format == 'GIF':
-            save_kwargs['optimize'] = True
-            if getattr(img, "is_animated", False):
-                save_kwargs['save_all'] = True
+            if target_format == 'GIF':
+                save_kwargs['optimize'] = True
+                if getattr(img, "is_animated", False): save_kwargs['save_all'] = True
 
-        img.save(output_filepath, format=target_format, **save_kwargs)
-        img.close()
+            img.save(output_filepath, format=target_format, **save_kwargs)
+            img.close()
 
-        # Final Verification
-        if os.path.exists(output_filepath) and os.path.getsize(output_filepath) > 0:
             with JOB_LOCK:
                 job['status'] = 'completed'
                 job['progress'] = 100
                 job['end_time'] = datetime.now(timezone.utc).isoformat()
-        else:
-            raise Exception("File save failed (empty file).")
 
     except Exception as e:
         app.logger.error(f"Job {job_id} failed: {repr(e)}")
         with JOB_LOCK:
             job['status'] = 'failed'
-            job['log'] = "Error processing image. The file might be corrupt."
+            job['log'] = str(e)
     finally:
         if os.path.exists(input_filepath):
             try:
@@ -296,9 +348,7 @@ def run_image_job(job_id):
                 pass
 
 
-
 # 3. Cleanup Task
-
 
 def cleanup_old_files():
     cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=CLEANUP_INTERVAL_MINUTES)
@@ -334,9 +384,7 @@ def start_cleanup_scheduler():
     t.start()
 
 
-
 # 4. API Endpoints
-
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
@@ -354,17 +402,24 @@ def create_job():
         return jsonify({"msg": "Missing file"}), 400
 
     file = request.files['file']
-    conversion_key = request.form.get('conversion_key')
+    mode = request.form.get('mode', 'convert')  # Get Mode
 
+    # Validate Mode
+    if mode not in ['convert', 'upscale']:
+        return jsonify({"msg": "Invalid mode"}), 400
+
+    # For convert mode, validate key
+    conversion_key = request.form.get('conversion_key')
+    if mode == 'convert' and (not conversion_key or conversion_key not in CONVERSION_MAP):
+        return jsonify({"msg": "Unknown format"}), 400
+
+    settings = {}
     try:
         settings = json.loads(request.form.get('settings', '{}'))
-    except json.JSONDecodeError:
-        return jsonify({"msg": "Invalid settings JSON"}), 400
+    except:
+        pass
 
-    if not file.filename or not conversion_key:
-        return jsonify({"msg": "Invalid data"}), 400
-    if conversion_key not in CONVERSION_MAP:
-        return jsonify({"msg": "Unknown format"}), 400
+    if not file.filename: return jsonify({"msg": "Invalid file"}), 400
 
     mime_type = get_file_magic_mime(file.stream)
     if not mime_type.startswith('image/') and mime_type != 'application/octet-stream':
@@ -384,11 +439,12 @@ def create_job():
     with JOB_LOCK:
         JOB_QUEUE[job_uuid] = {
             'job_id': job_uuid,
+            'mode': mode,
             'input_original_filename': file.filename,
             'input_filepath': input_filepath,
             'output_filepath': None,
             'conversion_key': conversion_key,
-            'settings': settings,  # settings now includes 'opacity' and 'quality'
+            'settings': settings,
             'status': 'queued',
             'progress': 0,
             'start_time': datetime.now(timezone.utc).isoformat(),
@@ -418,11 +474,18 @@ def download_file(job_uuid):
     if not job or job['status'] != 'completed' or not job['output_filepath']:
         return jsonify({"msg": "Unavailable"}), 404
     output_filepath = job['output_filepath']
-    details = CONVERSION_MAP.get(job['conversion_key'])
+
+    # Determine MIME
+    mime = 'application/octet-stream'
+    if job.get('mode') == 'upscale':
+        mime = 'image/png'
+    elif job.get('conversion_key'):
+        mime = CONVERSION_MAP[job['conversion_key']]['mime']
+
     try:
         return send_file(
             output_filepath,
-            mimetype=details['mime'],
+            mimetype=mime,
             as_attachment=True,
             download_name=os.path.basename(output_filepath)
         )

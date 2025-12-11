@@ -9,16 +9,16 @@ from logging.handlers import RotatingFileHandler
 import threading
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
-import io  # For handling image data in memory
-import requests  # For external API calls
+import io
+# Removed 'requests' as it is no longer needed without the AI feature
 
 from flask import Flask, request, jsonify, send_file, url_for, render_template
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-# FIX 1: Import UnidentifiedImageError for robust API error handling
-from PIL import Image, ImageOps, ImageEnhance, UnidentifiedImageError
+from PIL import Image, ImageOps, ImageEnhance, ImageFilter, UnidentifiedImageError
+# Added ImageFilter for Blur
 
 # 0. Configuration & Initialization
 
@@ -49,11 +49,9 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 CLEANUP_INTERVAL_MINUTES = 30
 CLEANUP_LOOP_SECONDS = CLEANUP_INTERVAL_MINUTES * 60
 
-# --- AI Configuration ---
-HF_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "HF_TOKEN_NOT_SET")
-
-# FIX 2: Change the deprecated URL (api-inference) to the correct, non-deprecated URL (router)
-HF_MODEL_URL = "https://router.huggingface.co/hf-inference/models/DMO3D/Swin2SR_Classic_2x_8F_x4"
+# --- AI Configuration (Removed) ---
+# HF_API_TOKEN is no longer needed
+# HF_MODEL_URL is no longer needed
 
 # --- Conversion Map ---
 CONVERSION_MAP = {
@@ -68,8 +66,7 @@ CONVERSION_MAP = {
                     'mime': 'image/tiff'},
     'pillow_ico': {'name': 'ICO (Favicon)', 'ext': 'ico', 'format': 'ICO', 'supports_quality': False,
                    'mime': 'image/x-icon'},
-    'ai_upscale': {'name': 'AI Upscale (.png)', 'ext': 'png', 'format': 'PNG', 'supports_quality': False,
-                   'mime': 'image/png'}
+    # 'ai_upscale' is removed
 }
 
 # 1. Flask App Factory & Extensions
@@ -133,24 +130,22 @@ def get_file_magic_mime(file_stream):
 # 2. Image Processing Workers
 
 def run_processing_job(job_id):
-    """Routes the job to the correct worker function based on job type."""
+    """Routes the job to the correct worker function (only convert remains)."""
     with JOB_LOCK:
         job = JOB_QUEUE.get(job_id)
         if not job: return
 
     mode = job.get('mode')
 
-    if mode == 'upscale':
-        run_upscale_job(job_id)
-    elif mode == 'convert':
+    if mode == 'convert':
         run_conversion_job(job_id)
     else:
         with JOB_LOCK:
             job['status'] = 'failed'
-            job['log'] = "Invalid job mode."
+            job['log'] = "Invalid job mode. Only 'convert' is supported."
 
 def run_conversion_job(job_id):
-    """Worker thread with Opacity & Quality logic."""
+    """Worker thread for image conversion and the 10 new editing features."""
     with JOB_LOCK:
         job = JOB_QUEUE.get(job_id)
 
@@ -184,11 +179,17 @@ def run_conversion_job(job_id):
     try:
         with JOB_LOCK:
             job['progress'] = 20
+        
+        # 1. Open Image
         img = Image.open(input_filepath)
 
         # Handle animations (seek 0 unless GIF/WEBP target)
         if getattr(img, "is_animated", False) and target_format not in ['GIF', 'WEBP']:
             img.seek(0)
+            
+        # Ensure we have a working image mode for all features
+        if img.mode == 'P':
+            img = img.convert('RGBA' if 'transparency' in img.info else 'RGB')
 
         # A. RESIZING
         req_width = settings.get('width')
@@ -229,9 +230,91 @@ def run_conversion_job(job_id):
             img.putalpha(alpha)
 
         with JOB_LOCK:
-            job['progress'] = 60
+            job['progress'] = 50
 
-        # C. COLOR MODE & FORMAT HANDLING
+        # C. NEW IMAGE EDITING FEATURES (10 Features)
+
+        # C1. BORDER/PADDING (Must run before most other effects)
+        border_size = int(settings.get('border_size', 0))
+        border_color = settings.get('border_color', '#000000')
+
+        if border_size > 0:
+            if img.mode != 'RGB': img = img.convert('RGB')
+            # Convert hex to RGB tuple
+            border_color_rgb = tuple(int(border_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+            img = ImageOps.expand(img, border=border_size, fill=border_color_rgb)
+
+        # C2. FLIP & ROTATE
+        if settings.get('flip_h'): # Feature 2: Flip Horizontal
+            img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        if settings.get('flip_v'): # Feature 3: Flip Vertical
+            img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        
+        rotate_angle = settings.get('rotate_angle', 0) # Feature 1: Rotation
+        try:
+            angle = int(rotate_angle) % 360
+            if angle != 0:
+                img = img.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+        except ValueError:
+            pass 
+
+        # Ensure image is in RGB/RGBA for enhancements and filters
+        if img.mode not in ('RGB', 'RGBA'): img = img.convert('RGB')
+
+        # C3. ENHANCEMENTS (Brightness, Contrast, Sharpness, Blur)
+        
+        # Feature 7: Brightness
+        brightness_factor = float(settings.get('brightness', 100)) / 100.0
+        if brightness_factor != 1.0:
+            enhancer = ImageEnhance.Brightness(img)
+            img = enhancer.enhance(brightness_factor)
+
+        # Feature 8: Contrast
+        contrast_factor = float(settings.get('contrast', 100)) / 100.0
+        if contrast_factor != 1.0:
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(contrast_factor)
+            
+        # Feature 9: Sharpen
+        sharpness_factor = float(settings.get('sharpen', 0)) / 100.0
+        if sharpness_factor > 0:
+            enhancer = ImageEnhance.Sharpness(img)
+            # Map sharpen slider (0-100) to enhance factor (1.0 to 3.0)
+            enhance_val = 1.0 + (sharpness_factor * 2.0 / 100.0)
+            img = enhancer.enhance(enhance_val)
+
+        # Feature 10: Gaussian Blur
+        blur_level = int(settings.get('blur', 0))
+        if blur_level > 0:
+            img = img.filter(ImageFilter.GaussianBlur(radius=blur_level / 10.0))
+
+        # C4. FILTERS (Grayscale, Sepia, Invert) - These are applied last
+
+        if settings.get('filter_grayscale'): # Feature 4: Grayscale
+            img = img.convert('L').convert('RGB')
+        
+        if settings.get('filter_sepia'): # Feature 5: Sepia
+            # Simple sepia tone mapping (must be RGB)
+            if img.mode != 'RGB': img = img.convert('RGB')
+            r, g, b = img.split()
+            r_sepia = r.point(lambda p: min(255, int(p * 0.393 + g.getpixel((0,0)) * 0.769 + b.getpixel((0,0)) * 0.189)))
+            g_sepia = g.point(lambda p: min(255, int(r.getpixel((0,0)) * 0.349 + p * 0.686 + b.getpixel((0,0)) * 0.168)))
+            b_sepia = b.point(lambda p: min(255, int(r.getpixel((0,0)) * 0.272 + g.getpixel((0,0)) * 0.534 + p * 0.131)))
+            img = Image.merge('RGB', (r_sepia, g_sepia, b_sepia))
+            # Fallback/alternative simple Sepia blend
+            if not isinstance(img, Image.Image): # Check if merge worked (it should, but safety)
+                 img = img.convert('L').convert('RGB')
+                 img = Image.blend(img, Image.new('RGB', img.size, (255, 240, 192)), 0.3)
+
+
+        if settings.get('filter_invert'): # Feature 6: Invert
+            if img.mode not in ('RGB', 'RGBA'): img = img.convert('RGB')
+            img = ImageOps.invert(img)
+        
+        with JOB_LOCK:
+            job['progress'] = 80
+
+        # D. COLOR MODE & FORMAT HANDLING (Original logic)
         if target_format in ['JPEG', 'BMP']:
             if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
                 background = Image.new('RGB', img.size, (255, 255, 255))
@@ -244,10 +327,7 @@ def run_conversion_job(job_id):
         elif target_format == 'ICO':
             img = ImageOps.contain(img, (256, 256))
 
-        with JOB_LOCK:
-            job['progress'] = 80
-
-        # D. SAVING & QUALITY
+        # E. SAVING & QUALITY
         save_kwargs = {}
         if details['supports_quality']:
             try:
@@ -262,7 +342,7 @@ def run_conversion_job(job_id):
                 save_kwargs['save_all'] = True
 
         img.save(output_filepath, format=target_format, **save_kwargs)
-        img.close()
+        img.close() # Safely close the image object
 
         if os.path.exists(output_filepath) and os.path.getsize(output_filepath) > 0:
             with JOB_LOCK:
@@ -272,135 +352,27 @@ def run_conversion_job(job_id):
         else:
             raise Exception("File save failed (empty file).")
 
+    except UnidentifiedImageError:
+         app.logger.error(f"Job {job_id} failed: The file could not be opened as an image.")
+         with JOB_LOCK:
+            job['status'] = 'failed'
+            job['log'] = "The file is not a valid or supported image file."
     except Exception as e:
         app.logger.error(f"Job {job_id} failed: {repr(e)}")
         with JOB_LOCK:
             job['status'] = 'failed'
-            job['log'] = "Error processing image. The file might be corrupt."
+            job['log'] = f"Error processing image: {str(e)}"
     finally:
-        if os.path.exists(input_filepath) and job.get('mode') == 'convert':
+        # Keep original file clean up
+        if os.path.exists(input_filepath):
             try:
                 os.remove(input_filepath)
             except OSError:
                 pass
 
-def run_upscale_job(job_id):
-    """Worker thread for AI Upscaling via Hugging Face API."""
-    with JOB_LOCK:
-        job = JOB_QUEUE.get(job_id)
-
-    if not job: return
-
-    with JOB_LOCK:
-        job['status'] = 'running'
-        job['progress'] = 10
-
-    input_filepath = job['input_filepath']
-    output_ext = CONVERSION_MAP['ai_upscale']['ext']
-    base_name = os.path.splitext(os.path.basename(job['input_original_filename']))[0]
-    output_filename = f"upscaled_{base_name}_{secrets.token_urlsafe(4)}.{output_ext}"
-    output_filepath = os.path.join(OUTPUT_FOLDER, output_filename)
-
-    with JOB_LOCK:
-        job['output_filepath'] = output_filepath
-
-    try:
-        if HF_API_TOKEN == "HF_TOKEN_NOT_SET":
-            raise Exception("HUGGINGFACE_API_TOKEN is not set in environment.")
-
-        # 1. Prepare Request
-        with open(input_filepath, 'rb') as f:
-            data = f.read()
-
-        headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-
-        with JOB_LOCK:
-            job['progress'] = 30
-            job['log'] = "Sending file to Hugging Face API..."
-
-        # 2. Call API
-        response = requests.post(HF_MODEL_URL, headers=headers, data=data, timeout=60)
-
-        with JOB_LOCK:
-            job['progress'] = 70
-            job['log'] = f"API Response Status: {response.status_code}"
-
-        # 3. Handle Response
-        if response.status_code == 200:
-            image_data = response.content
-            
-            # Use try/except to catch non-image data (JSON errors) returned from a 200 response
-            try:
-                with Image.open(io.BytesIO(image_data)) as img_up:
-                    settings = job['settings']
-                    upscale_res = settings.get('upscale_res')
-
-                    if upscale_res != 'original':
-                        target_w, target_h = (0, 0)
-                        if upscale_res == '1080p':
-                            target_w, target_h = (1920, 1080)
-                        elif upscale_res == '2k':
-                            target_w, target_h = (2560, 1440)
-                        elif upscale_res == '4k':
-                            target_w, target_h = (3840, 2160)
-
-                        if target_w > 0:
-                            # Use ImageOps.contain to resize while maintaining aspect ratio
-                            img_up = ImageOps.contain(img_up, (target_w, target_h), method=Image.Resampling.LANCZOS)
-                        
-                    img_up.save(output_filepath, format='PNG')
-                    
-            except UnidentifiedImageError:
-                # This catches if the API returned an error message (like a JSON object) instead of an image
-                try:
-                    err_json = response.json()
-                    raise Exception(f"AI API Error: {err_json.get('error', 'Unknown Error')}")
-                except:
-                    # If it wasn't valid JSON, it's just corrupt data or an unexpected error
-                    raise Exception("AI API returned invalid image data (possibly an uncaught error)")
-
-        elif response.status_code == 503:
-            # Model is loading
-            try:
-                hf_error = response.json()
-                raise Exception(f"AI Model Loading... Estimated wait: {int(hf_error.get('estimated_time', 20))}s. Please try again.")
-            except Exception:
-                raise Exception("AI Model is currently loading, please try again in a few seconds.")
-        else:
-            # Other errors (400, 410, 500, etc.)
-            error_message = response.text
-            try:
-                error_data = response.json()
-                error_message = error_data.get('error', response.text)
-            except Exception:
-                pass
-            
-            # The 410 error itself will be caught here if the URL wasn't fixed!
-            raise Exception(f"AI Error ({response.status_code}): {error_message}")
-
-        if os.path.exists(output_filepath) and os.path.getsize(output_filepath) > 0:
-            with JOB_LOCK:
-                job['status'] = 'completed'
-                job['progress'] = 100
-                job['end_time'] = datetime.now(timezone.utc).isoformat()
-        else:
-            raise Exception("File save failed (empty file).")
-
-    except Exception as e:
-        app.logger.error(f"Job {job_id} failed: {repr(e)}")
-        with JOB_LOCK:
-            # Clean up the error message for the user
-            log_message = str(e)
-            if 'html' in log_message.lower():
-                log_message = "AI API Error: The Hugging Face endpoint is likely incorrect or deprecated. Check the HF_MODEL_URL."
-                
-            job['status'] = 'failed'
-            job['log'] = log_message
-    finally:
-        # Note: Input file is kept for a while in TEMP_DIR until the global cleanup runs.
-        pass
 
 # 3. Cleanup Task
+# (No changes here, as requested)
 
 
 def cleanup_old_files():
@@ -464,14 +436,11 @@ def create_job():
     except json.JSONDecodeError:
         return jsonify({"msg": "Invalid settings JSON"}), 400
 
-    if not file.filename or not mode:
-        return jsonify({"msg": "Invalid data"}), 400
+    if not file.filename or mode != 'convert': # Enforce 'convert' mode
+        return jsonify({"msg": "Invalid job data or mode"}), 400
 
-    if mode == 'convert' and conversion_key not in CONVERSION_MAP:
-        return jsonify({"msg": "Unknown format"}), 400
-
-    if mode == 'upscale':
-        conversion_key = 'ai_upscale'
+    if conversion_key not in CONVERSION_MAP:
+        return jsonify({"msg": "Unknown conversion format"}), 400
 
     mime_type = get_file_magic_mime(file.stream)
     if not mime_type.startswith('image/') and mime_type != 'application/octet-stream':
@@ -515,9 +484,8 @@ def get_job_status(job_uuid):
 
     if job_data['status'] == 'completed' and job_data['output_filepath']:
         job_data['download_url'] = url_for('download_file', job_uuid=job_uuid, _external=True)
-        if job_data['mode'] == 'convert':
-            job_data.pop('input_filepath', None)
-
+        # Remove input path once the job is done
+        job_data.pop('input_filepath', None)
         job_data.pop('output_filepath', None)
     return jsonify(job_data), 200
 

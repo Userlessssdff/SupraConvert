@@ -213,7 +213,7 @@
             font-size: 1.5rem;
             margin-bottom: 1rem;
         }
-        
+
         /* NEW: Checkbox Style */
         .checkbox-container {
             display: flex;
@@ -339,8 +339,6 @@
         }
         @keyframes stripe-move { from { background-position: 1rem 0; } to { background-position: 0 0; } }
 
-        /* Removed Comparison Slider Styles */
-
         /* --- Footer --- */
         footer {
             text-align: center;
@@ -357,7 +355,6 @@
             main { padding: 1.5rem; }
             h1 { font-size: 2rem; }
             .nav-pills { flex-wrap: wrap; justify-content: center; }
-            /* .comp-container { height: 300px; } - Removed */
         }
     </style>
 </head>
@@ -423,7 +420,7 @@
                                 <input type="checkbox" id="check-ar" checked>
                                 Maintain Aspect Ratio
                             </label>
-                            
+
                             <h4>Resize Quality (Interpolation)</h4>
                             <select id="resample-filter" class="form-control">
                                 <option value="lanczos">High Quality (Lanczos - Default)</option>
@@ -522,7 +519,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="settings-accordion" id="acc-format-specific">
                         <div class="accordion-head" onclick="toggleAccordion('acc-format-specific')">
                             <span>⚙️ Format Specific Options</span>
@@ -576,13 +573,13 @@
                         <li>**Uploaded Files:** All files uploaded for processing are stored temporarily on the server (max 30 minutes, see Cleanup Policy) and are immediately deleted after the resulting file is downloaded or the job expires. We do not inspect, retain, or share your image content.</li>
                         <li>Form submissions (e.g., contact form)</li>
                     </ul>
-                    
+
                     <h3>2. Data Retention & Deletion</h3>
                     <p>All uploaded source images and processed result images are automatically and permanently deleted from our servers within 30 minutes of processing completion or job failure. We do not inspect, retain, or share your image content. You must download your file within this window.</p>
-                    
-                    <h3>3. Third-Party Processing (AI Upscale)</h3>
-                    <p>The **AI Upscale** feature sends your image data to a third-party AI model hosted via a secure API (currently Hugging Face). We are not responsible for their data handling. Use the AI feature at your own discretion. Standard conversions are processed locally.</p>
-                    
+
+                    <h3>3. Third-Party Processing</h3>
+                    <p>Standard conversions and all advanced features are processed locally on the secure server. We do not send your images to any third-party APIs for processing.</p>
+
                     <h3>4. Cookies and Tracking</h3>
                     <p>We use essential cookies for:</p>
                     <ul>
@@ -590,10 +587,10 @@
                         <li>Session management (to track your job status)</li>
                         <li>We do not use tracking cookies for personalized advertising.</li>
                     </ul>
-                    
+
                     <h3>5. Children's Privacy</h3>
                     <p>Our service is not directed to individuals under the age of 13. We do not knowingly collect data from children.</p>
-                    
+
                     <h3>6. Contact Us</h3>
                     <p>If you have any questions about this Privacy Policy, please contact us at: 📧 <strong>[Your Support Email]</strong></p>
                 </div>
@@ -607,16 +604,16 @@
                 <div class="info-card" style="max-width: 900px; margin: 0 auto;">
                     <h3>1. Acceptance</h3>
                     <p>By accessing or using UltraConvert, you agree to be bound by these Terms of Service.</p>
-                    
+
                     <h3>2. User Content</h3>
                     <p>You retain all ownership rights to the content you upload. You grant UltraConvert a temporary, worldwide, non-exclusive license to process, resize, convert, and output your files solely for the purpose of providing the service you requested. This license terminates automatically when the files are deleted from the server (max 30 minutes).</p>
-                    
+
                     <h3>3. Restrictions</h3>
                     <p>You must not upload or process any content that is illegal, infringes on intellectual property rights, or is malicious. Abuse of the service, including excessive automated requests or high-volume uploads designed to strain resources, is prohibited.</p>
-                    
+
                     <h3>4. Service Availability and Disclaimer</h3>
                     <p>The service is provided on an "AS IS" and "AS AVAILABLE" basis. We make no guarantees about service uptime or performance. We are not responsible for any data loss, file corruption, or processing errors that may occur.</p>
-                    
+
                     <h3>5. Limitation of Liability</h3>
                     <p>UltraConvert shall not be liable for any direct, indirect, incidental, special, or consequential damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the service.</p>
                 </div>
@@ -628,12 +625,12 @@
                     <p>High performance, privacy-focused image processing.</p>
                 </div>
                 <div class="info-card" style="margin-bottom: 2rem; max-width: 900px; margin: 0 auto;">
-                    <h3>Hybrid Architecture - Explaining Everything Works</h3>
-                    <p>UltraConvert uses a robust, thread-safe Python Flask backend with a responsive, modern HTML/CSS/JS frontend. The entire application is built on a **Conversion Core (Local Processing)** architecture. Standard conversions (JPG, PNG, WebP, etc.) and all advanced features (Resize, Rotate, Color Adjustments, Quality) are handled locally on the secure server using the **Python Pillow** library. This is fast, thread-safe, and keeps your data private on the server for the brief retention period.</p>
-                    
+                    <h3>Conversion Core (Local Processing)</h3>
+                    <p>UltraConvert uses a robust, thread-safe Python Flask backend with a responsive, modern HTML/CSS/JS frontend. The entire application is built on a **Conversion Core (Local Processing)** architecture. All features (Convert, Resize, Rotate, Color Adjustments, Quality) are handled locally on the secure server using the **Python Pillow** library. This is fast, thread-safe, and keeps your data private on the server for the brief retention period.</p>
+
                     <h3>Smoothness and Performance</h3>
                     <p>The user interface employs pure JavaScript and CSS (using advanced `cubic-bezier` timing functions like `var(--ease-smooth)`) to deliver silky smooth transitions and animations. The backend uses a `ThreadPoolExecutor` and `JOB_LOCK` to manage **concurrent user jobs** without blocking the main application (asynchronous processing), resulting in a fast and non-stuttering experience for all users.</p>
-                    
+
                     <h3>New Features in this Release!</h3>
                     <p>This version includes **22** major new features, including advanced color correction, transformations, interpolation controls, and new modern output formats like AVIF and JXL.</p>
                 </div>
@@ -674,7 +671,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Removed: moveSlider function
 
         // --- UI INTERACTION ---
 
@@ -682,13 +678,13 @@
             const acc = document.getElementById(id);
             const body = acc.querySelector('.accordion-body');
             const wasOpen = acc.classList.contains('active');
-            
+
             // Close all other accordions for a cleaner look
             document.querySelectorAll('.settings-accordion').forEach(a => {
                 a.classList.remove('active');
                 a.querySelector('.accordion-body').classList.remove('open');
             });
-            
+
             // Open the clicked one if it was closed
             if (!wasOpen) {
                 acc.classList.add('active');
@@ -700,7 +696,7 @@
             // Only 'conv' mode remains
             document.getElementById('state-upload-conv').style.display = 'none';
             document.getElementById('state-config-conv').style.display = 'none';
-            
+
             if(stateSuffix === 'result') {
                  triggerResultView();
             } else {
@@ -711,23 +707,22 @@
 
         function triggerResultView() {
             document.getElementById('state-config-conv').style.display = 'none';
-            // Removed: document.getElementById('state-config-up').style.display = 'none';
             const res = document.getElementById('state-result');
-            
+
             // Reset transition for smooth re-entry
-            res.style.transition = 'none'; 
+            res.style.transition = 'none';
             res.style.display = 'block';
             res.style.opacity = '0';
             res.style.transform = 'translateY(10px)';
-            
-            setTimeout(() => { 
+
+            setTimeout(() => {
                 res.style.transition = 'all 0.4s ease-out';
                 res.style.opacity = '1';
                 res.style.transform = 'translateY(0)';
             }, 10);
         }
 
-        // NEW: Dynamically updates format-specific options (No change to this logic)
+        // Dynamically updates format-specific options
         function updateFormatOptions(conversion_key) {
             const details = CONVERSIONS[conversion_key];
             const container = document.getElementById('format-options-container');
@@ -759,7 +754,7 @@
                     </label>
                 `;
             }
-            
+
             // WebP Specific (Feature 21: Lossless)
             if (details.format === 'WEBP') {
                 html += `
@@ -791,7 +786,7 @@
         function populateSelect() {
             const select = document.getElementById('format-select');
             select.innerHTML = '';
-            
+
             // Filter out 'ai_upscale' and sort
             const sortedConversions = Object.entries(CONVERSIONS)
                 .filter(([key, details]) => key !== 'ai_upscale')
@@ -803,17 +798,17 @@
                 option.textContent = details.name;
                 select.appendChild(option);
             }
-            
+
             select.onchange = (e) => updateFormatOptions(e.target.value);
-            
+
             if (sortedConversions.length > 0) {
                 updateFormatOptions(sortedConversions[0][0]);
             }
         }
 
-        // --- FILE HANDLING (Updated to remove upscale path) ---
+        // --- FILE HANDLING ---
 
-        function handleFile(f) { // Removed 'mode' parameter
+        function handleFile(f) {
             if (!f.type.startsWith('image/')) throw new Error("Only images are supported, please.");
             FILE = f;
             FILE_URL = URL.createObjectURL(f);
@@ -828,12 +823,12 @@
             // Converter dropzone
             const dropzoneConv = document.getElementById('dropzone-conv');
             const fileInputConv = document.getElementById('file-input-conv');
-            
+
             dropzoneConv.onclick = () => fileInputConv.click();
             fileInputConv.onchange = (e) => {
                 if(e.target.files.length) handleFile(e.target.files[0]);
             };
-            
+
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropzoneConv.addEventListener(eventName, (e) => {
                     e.preventDefault(); e.stopPropagation();
@@ -847,8 +842,6 @@
                     }
                 }, false);
             });
-            
-            // Removed: Upscale dropzone setup
 
             // Initialize enhancement sliders
             document.getElementById('inp-brightness').oninput = (e) => document.getElementById('brightness-disp').textContent = e.target.value + '%';
@@ -858,7 +851,7 @@
             document.getElementById('inp-opacity').oninput = (e) => document.getElementById('opacity-disp').textContent = e.target.value + '%';
         }
 
-        function resetApp() { // Removed 'mode' parameter, assumes 'conv'
+        function resetApp() {
             FILE = null;
             FILE_URL = null;
             clearInterval(TIMER);
@@ -866,7 +859,6 @@
             showState('conv', 'upload');
             document.getElementById('progress-bar').style.width = '0%';
             document.getElementById('final-actions').style.display = 'none';
-            // Removed: document.getElementById('compare-wrapper').style.display = 'none';
             document.getElementById('preview-area').style.display = 'none';
             document.getElementById('progress-bar').style.backgroundColor = 'var(--primary)';
         }
@@ -878,18 +870,18 @@
             startTime = Date.now();
             const fd = new FormData();
             fd.append('file', FILE);
-            fd.append('mode', 'convert'); // Hardcoded since only 'convert' remains
-            
+            fd.append('mode', 'convert');
+
             // Conversion Logic (kept all features)
             const conversion_key = document.getElementById('format-select').value;
-            const settings = { 
+            const settings = {
                 // Existing settings
-                width: document.getElementById('inp-width').value, 
-                height: document.getElementById('inp-height').value, 
+                width: document.getElementById('inp-width').value,
+                height: document.getElementById('inp-height').value,
                 maintain_ar: document.getElementById('check-ar').checked,
                 quality: document.getElementById('inp-quality').value,
                 opacity: document.getElementById('inp-opacity').value,
-                
+
                 // New settings (Features 1-6, 21, 22)
                 resample_filter: document.getElementById('resample-filter').value,
                 rotation: document.getElementById('inp-rotation').value,
@@ -898,7 +890,7 @@
                 brightness: document.getElementById('inp-brightness').value,
                 contrast: document.getElementById('inp-contrast').value,
                 sharpness: document.getElementById('inp-sharpness').value,
-                
+
                 // Format-specific settings
                 progressive_jpeg: document.getElementById('check-progressive-jpeg') ? document.getElementById('check-progressive-jpeg').checked : false,
                 optimize_png: document.getElementById('check-optimize-png') ? document.getElementById('check-optimize-png').checked : false,
@@ -907,17 +899,17 @@
             };
             fd.append('conversion_key', conversion_key);
             fd.append('settings', JSON.stringify(settings));
-            
+
             try {
                 // 1. Upload
                 document.getElementById('status-head').textContent = "Uploading Image...";
                 document.getElementById('status-text').textContent = "Sending file to secure environment.";
-                
+
                 const upload = await fetch('/api/upload', {
                     method: 'POST',
                     body: fd
                 });
-                
+
                 if (!upload.ok) {
                     const error = await upload.json();
                     throw new Error(error.msg || "Upload failed due to server error.");
@@ -925,7 +917,7 @@
 
                 const res = await upload.json();
                 const job_uuid = res.job_uuid;
-                
+
                 // 2. Start Polling
                 document.getElementById('status-head').textContent = "Processing Image...";
                 TIMER = setInterval(() => checkStatus(job_uuid), 1000);
@@ -963,16 +955,16 @@
                     clearInterval(TIMER);
                     bar.style.width = "100%";
                     document.getElementById('status-head').textContent = "Success!";
-                    
+
                     // Calculate total time
                     const totalTimeSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
                     txt.textContent = `Image processing complete in ${totalTimeSeconds} seconds. Download below.`;
-                    
+
                     const acts = document.getElementById('final-actions');
                     acts.style.display = 'block';
 
                     let download_filename = res.download_url ? (res.download_url.split('/').pop().split('?')[0]) : 'processed_image.file';
-                    
+
                     acts.innerHTML = `
                         <div style="display: flex; gap: 1rem; justify-content: center;">
                             <a href="${res.download_url}" download="${download_filename}" class="btn btn-primary">
@@ -985,7 +977,7 @@
                     `;
 
                     const previewArea = document.getElementById('preview-area');
-                    
+
                     // Only show standard preview (Comparison logic removed)
                     previewArea.style.display = 'block';
                     previewArea.innerHTML = `<img src="${res.download_url}" class="preview-img">`;
@@ -1019,13 +1011,13 @@
                 console.error("Backend Disconnected", e);
                 document.getElementById('state-upload-conv').innerHTML = `
                     <div class="info-card" style="text-align: center; background: var(--error); color: white;">
-                        <h3>Server Offline</h3>
-                        <p>Could not connect to the backend processing service. Please check the server status.</p>
+                        <h3>Server Offline or API Error</h3>
+                        <p>Could not connect to the backend processing service or received an invalid response. Please check the server status.</p>
                     </div>
                 `;
             }
             setupEvents();
-            
+
             // Keep feature count text
             const aboutSection = document.querySelector('#view-about .info-card p:last-of-type');
             if (aboutSection) {

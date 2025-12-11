@@ -10,15 +10,14 @@ import threading
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import io
-# Removed 'requests' as it is no longer needed without the AI feature
 
 from flask import Flask, request, jsonify, send_file, url_for, render_template
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-from PIL import Image, ImageOps, ImageEnhance, ImageFilter, UnidentifiedImageError
-# Added ImageFilter for Blur
+from PIL import Image, ImageOps, ImageEnhance, ImageFilter, ImageDraw, ImageFont # Added ImageDraw, ImageFont for new features
+import math # Added for Color Replace distance calculation
 
 # 0. Configuration & Initialization
 
@@ -49,10 +48,6 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 CLEANUP_INTERVAL_MINUTES = 30
 CLEANUP_LOOP_SECONDS = CLEANUP_INTERVAL_MINUTES * 60
 
-# --- AI Configuration (Removed) ---
-# HF_API_TOKEN is no longer needed
-# HF_MODEL_URL is no longer needed
-
 # --- Conversion Map ---
 CONVERSION_MAP = {
     'pillow_jpg': {'name': 'JPEG (.jpg)', 'ext': 'jpg', 'format': 'JPEG', 'supports_quality': True,
@@ -66,7 +61,6 @@ CONVERSION_MAP = {
                     'mime': 'image/tiff'},
     'pillow_ico': {'name': 'ICO (Favicon)', 'ext': 'ico', 'format': 'ICO', 'supports_quality': False,
                    'mime': 'image/x-icon'},
-    # 'ai_upscale' is removed
 }
 
 # 1. Flask App Factory & Extensions
@@ -127,6 +121,15 @@ def get_file_magic_mime(file_stream):
         logging.error(f"Mime detection error: {e}")
         return 'application/octet-stream'
 
+# Helper for Color Replacement
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+def color_distance(c1, c2):
+    """Euclidean distance between two RGB colors."""
+    return math.sqrt(sum([(a - b) ** 2 for a, b in zip(c1, c2)]))
+
 # 2. Image Processing Workers
 
 def run_processing_job(job_id):
@@ -145,7 +148,7 @@ def run_processing_job(job_id):
             job['log'] = "Invalid job mode. Only 'convert' is supported."
 
 def run_conversion_job(job_id):
-    """Worker thread for image conversion and the 10 new editing features."""
+    """Worker thread for image conversion and all editing features."""
     with JOB_LOCK:
         job = JOB_QUEUE.get(job_id)
 
@@ -190,8 +193,12 @@ def run_conversion_job(job_id):
         # Ensure we have a working image mode for all features
         if img.mode == 'P':
             img = img.convert('RGBA' if 'transparency' in img.info else 'RGB')
+            
+        # Ensure RGBA for transparency-based features
+        if img.mode != 'RGBA': 
+            img = img.convert('RGBA')
 
-        # A. RESIZING
+        # A. RESIZING (Existing Logic)
         req_width = settings.get('width')
         req_height = settings.get('height')
         maintain_ar = settings.get('maintain_ar')
@@ -213,44 +220,53 @@ def run_conversion_job(job_id):
                 img = img.resize((final_w, final_h), resample=Image.Resampling.LANCZOS)
 
         with JOB_LOCK:
-            job['progress'] = 40
+            job['progress'] = 30
 
-        # B. OPACITY ADJUSTMENT
-        try:
-            opacity_val = int(settings.get('opacity', 100))
-        except (ValueError, TypeError):
-            opacity_val = 100
+        # B. COLOR REPLACEMENT (NEW FEATURE)
+        target_hex = settings.get('color_replace_target')
+        new_hex = settings.get('color_replace_new')
+        tolerance = int(settings.get('color_replace_tolerance', 0))
 
-        if 0 <= opacity_val < 100:
-            if img.mode != 'RGBA':
-                img = img.convert('RGBA')
-            alpha = img.split()[3]
-            factor = opacity_val / 100.0
-            alpha = alpha.point(lambda p: int(p * factor))
-            img.putalpha(alpha)
+        if target_hex and new_hex and tolerance > 0:
+            try:
+                target_rgb = hex_to_rgb(target_hex)
+                new_rgb = hex_to_rgb(new_hex)
+                
+                # Check for alpha channel if image is RGBA
+                target_rgb = target_rgb + (255,) if img.mode == 'RGBA' and len(target_rgb) == 3 else target_rgb
+                new_rgb = new_rgb + (255,) if img.mode == 'RGBA' and len(new_rgb) == 3 else new_rgb
+                
+                data = list(img.getdata())
+                new_data = []
 
+                # Max distance for RGB colors is sqrt(255^2 * 3) ~ 441.7
+                max_tolerance = 442 # Use 442 to represent 100% tolerance visually
+
+                # Normalize tolerance from 0-100 to 0-442
+                normalized_tolerance = (tolerance / 100.0) * max_tolerance
+
+                for pixel in data:
+                    if color_distance(pixel[:3], target_rgb[:3]) <= normalized_tolerance:
+                        new_data.append(new_rgb)
+                    else:
+                        new_data.append(pixel)
+                
+                img.putdata(new_data)
+            except Exception as e:
+                app.logger.error(f"Color replacement failed: {e}")
+                
         with JOB_LOCK:
-            job['progress'] = 50
+            job['progress'] = 40
+            
+        # C. NEW IMAGE EDITING FEATURES (Transforms, Enhancements, Filters)
 
-        # C. NEW IMAGE EDITING FEATURES (10 Features)
-
-        # C1. BORDER/PADDING (Must run before most other effects)
-        border_size = int(settings.get('border_size', 0))
-        border_color = settings.get('border_color', '#000000')
-
-        if border_size > 0:
-            if img.mode != 'RGB': img = img.convert('RGB')
-            # Convert hex to RGB tuple
-            border_color_rgb = tuple(int(border_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-            img = ImageOps.expand(img, border=border_size, fill=border_color_rgb)
-
-        # C2. FLIP & ROTATE
-        if settings.get('flip_h'): # Feature 2: Flip Horizontal
+        # C1. FLIP & ROTATE (Existing Logic)
+        if settings.get('flip_h'): 
             img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-        if settings.get('flip_v'): # Feature 3: Flip Vertical
+        if settings.get('flip_v'): 
             img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
         
-        rotate_angle = settings.get('rotate_angle', 0) # Feature 1: Rotation
+        rotate_angle = settings.get('rotate_angle', 0) 
         try:
             angle = int(rotate_angle) % 360
             if angle != 0:
@@ -261,64 +277,138 @@ def run_conversion_job(job_id):
         # Ensure image is in RGB/RGBA for enhancements and filters
         if img.mode not in ('RGB', 'RGBA'): img = img.convert('RGB')
 
-        # C3. ENHANCEMENTS (Brightness, Contrast, Sharpness, Blur)
+        # C2. ENHANCEMENTS (Brightness, Contrast, Sharpen, Blur - Existing Logic)
         
-        # Feature 7: Brightness
         brightness_factor = float(settings.get('brightness', 100)) / 100.0
         if brightness_factor != 1.0:
             enhancer = ImageEnhance.Brightness(img)
             img = enhancer.enhance(brightness_factor)
 
-        # Feature 8: Contrast
         contrast_factor = float(settings.get('contrast', 100)) / 100.0
         if contrast_factor != 1.0:
             enhancer = ImageEnhance.Contrast(img)
             img = enhancer.enhance(contrast_factor)
             
-        # Feature 9: Sharpen
         sharpness_factor = float(settings.get('sharpen', 0)) / 100.0
         if sharpness_factor > 0:
             enhancer = ImageEnhance.Sharpness(img)
-            # Map sharpen slider (0-100) to enhance factor (1.0 to 3.0)
             enhance_val = 1.0 + (sharpness_factor * 2.0 / 100.0)
             img = enhancer.enhance(enhance_val)
 
-        # Feature 10: Gaussian Blur
         blur_level = int(settings.get('blur', 0))
         if blur_level > 0:
             img = img.filter(ImageFilter.GaussianBlur(radius=blur_level / 10.0))
 
-        # C4. FILTERS (Grayscale, Sepia, Invert) - These are applied last
-
-        if settings.get('filter_grayscale'): # Feature 4: Grayscale
+        # C3. FILTERS (Grayscale, Sepia, Invert - Existing Logic)
+        if settings.get('filter_grayscale'): 
             img = img.convert('L').convert('RGB')
         
-        if settings.get('filter_sepia'): # Feature 5: Sepia
-            # Simple sepia tone mapping (must be RGB)
+        if settings.get('filter_sepia'): 
             if img.mode != 'RGB': img = img.convert('RGB')
             r, g, b = img.split()
+            # Simple sepia tone approximation
             r_sepia = r.point(lambda p: min(255, int(p * 0.393 + g.getpixel((0,0)) * 0.769 + b.getpixel((0,0)) * 0.189)))
             g_sepia = g.point(lambda p: min(255, int(r.getpixel((0,0)) * 0.349 + p * 0.686 + b.getpixel((0,0)) * 0.168)))
             b_sepia = b.point(lambda p: min(255, int(r.getpixel((0,0)) * 0.272 + g.getpixel((0,0)) * 0.534 + p * 0.131)))
             img = Image.merge('RGB', (r_sepia, g_sepia, b_sepia))
-            # Fallback/alternative simple Sepia blend
-            if not isinstance(img, Image.Image): # Check if merge worked (it should, but safety)
-                 img = img.convert('L').convert('RGB')
-                 img = Image.blend(img, Image.new('RGB', img.size, (255, 240, 192)), 0.3)
 
-
-        if settings.get('filter_invert'): # Feature 6: Invert
+        if settings.get('filter_invert'): 
             if img.mode not in ('RGB', 'RGBA'): img = img.convert('RGB')
             img = ImageOps.invert(img)
+            
+        # Ensure RGBA for final steps
+        if img.mode != 'RGBA': img = img.convert('RGBA')
+
+        with JOB_LOCK:
+            job['progress'] = 60
+            
+        # D. WATERMARK (NEW FEATURE)
+        watermark_text = settings.get('watermark_text', '').strip()
+        watermark_size = int(settings.get('watermark_size', 20))
+        watermark_color = settings.get('watermark_color', '#FFFFFF')
         
+        if watermark_text:
+            try:
+                draw = ImageDraw.Draw(img)
+                font_path = os.path.join(BASE_DIR, "Arial.ttf") # Attempt to use a common font or fall back
+                try:
+                    # Look for a font file (Pillow needs a font file path for draw.text)
+                    font = ImageFont.truetype("arial.ttf", watermark_size)
+                except IOError:
+                    # Fallback to default font if arial.ttf is not found in search path
+                    font = ImageFont.load_default()
+                    
+                # Calculate text size (using default font as a safer fallback)
+                bbox = draw.textbbox((0, 0), watermark_text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                
+                # Position (bottom right corner, 20px padding)
+                x = img.width - text_width - 20
+                y = img.height - text_height - 20
+                
+                draw.text((x, y), watermark_text, fill=watermark_color, font=font)
+            except Exception as e:
+                app.logger.error(f"Watermark failed: {e}")
+
+        with JOB_LOCK:
+            job['progress'] = 70
+            
+        # E. CORNER ROUNDING & BORDER (Fix for smooth border)
+        border_size = int(settings.get('border_size', 0))
+        border_color = settings.get('border_color', '#000000')
+        corner_radius = int(settings.get('corner_radius', 0)) # Now a global setting
+
+        if corner_radius > 0:
+            width, height = img.size
+            
+            # Limit radius to half the shortest side
+            safe_radius = min(corner_radius, min(width, height) // 2)
+            
+            # 1. Create a mask with rounded corners
+            mask = Image.new('L', (width, height), 0)
+            draw = ImageDraw.Draw(mask)
+            draw.rounded_rectangle((0, 0, width, height), safe_radius, fill=255)
+            
+            # 2. Apply the mask to the image (making the image itself rounded)
+            img.putalpha(mask) 
+
+        # 3. Apply Border (if border_size > 0 and corner_radius > 0, the border will be smooth)
+        if border_size > 0:
+            border_color_rgb = hex_to_rgb(border_color)
+            
+            # Create a new image for the border background
+            bordered_img_size = (img.width + 2 * border_size, img.height + 2 * border_size)
+            border_bg = Image.new('RGBA', bordered_img_size, border_color_rgb + (255,))
+            
+            # Paste the (now potentially rounded) image onto the border background
+            border_bg.paste(img, (border_size, border_size), img)
+            img = border_bg
+            
+            # NOTE: If the image is rounded, the border is now implicitly rounded 
+            # by the original image's alpha channel cut-out.
+
+        # F. OPACITY ADJUSTMENT (Existing Logic)
+        try:
+            opacity_val = int(settings.get('opacity', 100))
+        except (ValueError, TypeError):
+            opacity_val = 100
+
+        if 0 <= opacity_val < 100:
+            # Opacity is already handled since we forced RGBA mode
+            alpha = img.split()[3]
+            factor = opacity_val / 100.0
+            alpha = alpha.point(lambda p: int(p * factor))
+            img.putalpha(alpha)
+
         with JOB_LOCK:
             job['progress'] = 80
 
-        # D. COLOR MODE & FORMAT HANDLING (Original logic)
+        # G. COLOR MODE & FORMAT HANDLING (Original logic)
         if target_format in ['JPEG', 'BMP']:
-            if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+            if img.mode in ('RGBA', 'LA'):
+                # Handle conversion to RGB by pasting onto white background
                 background = Image.new('RGB', img.size, (255, 255, 255))
-                if img.mode != 'RGBA': img = img.convert('RGBA')
                 background.paste(img, mask=img.split()[3])
                 img = background
             elif img.mode != 'RGB':
@@ -327,7 +417,7 @@ def run_conversion_job(job_id):
         elif target_format == 'ICO':
             img = ImageOps.contain(img, (256, 256))
 
-        # E. SAVING & QUALITY
+        # H. SAVING & QUALITY (Original logic)
         save_kwargs = {}
         if details['supports_quality']:
             try:
@@ -342,7 +432,7 @@ def run_conversion_job(job_id):
                 save_kwargs['save_all'] = True
 
         img.save(output_filepath, format=target_format, **save_kwargs)
-        img.close() # Safely close the image object
+        img.close() 
 
         if os.path.exists(output_filepath) and os.path.getsize(output_filepath) > 0:
             with JOB_LOCK:
@@ -363,7 +453,6 @@ def run_conversion_job(job_id):
             job['status'] = 'failed'
             job['log'] = f"Error processing image: {str(e)}"
     finally:
-        # Keep original file clean up
         if os.path.exists(input_filepath):
             try:
                 os.remove(input_filepath)
@@ -372,7 +461,7 @@ def run_conversion_job(job_id):
 
 
 # 3. Cleanup Task
-# (No changes here, as requested)
+# (No changes here)
 
 
 def cleanup_old_files():
@@ -434,9 +523,11 @@ def create_job():
     try:
         settings = json.loads(request.form.get('settings', '{}'))
     except json.JSONDecodeError:
+        # Improved error handling for invalid settings JSON
+        app.logger.error("Received invalid settings JSON.")
         return jsonify({"msg": "Invalid settings JSON"}), 400
 
-    if not file.filename or mode != 'convert': # Enforce 'convert' mode
+    if not file.filename or mode != 'convert':
         return jsonify({"msg": "Invalid job data or mode"}), 400
 
     if conversion_key not in CONVERSION_MAP:
@@ -454,8 +545,8 @@ def create_job():
         file.stream.seek(0)
         file.save(input_filepath)
     except Exception as e:
-        app.logger.error(f"Save failed: {e}")
-        return jsonify({"msg": "Internal save error"}), 500
+        app.logger.error(f"File save failed: {e}")
+        return jsonify({"msg": "Internal save error during file upload"}), 500
 
     with JOB_LOCK:
         JOB_QUEUE[job_uuid] = {
@@ -484,7 +575,6 @@ def get_job_status(job_uuid):
 
     if job_data['status'] == 'completed' and job_data['output_filepath']:
         job_data['download_url'] = url_for('download_file', job_uuid=job_uuid, _external=True)
-        # Remove input path once the job is done
         job_data.pop('input_filepath', None)
         job_data.pop('output_filepath', None)
     return jsonify(job_data), 200

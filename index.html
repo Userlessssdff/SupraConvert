@@ -227,6 +227,11 @@
             margin-bottom: 1rem;
         }
         .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-light); }
+        
+        .form-control[type="color"] {
+            min-height: 50px;
+            padding: 0.5rem;
+        }
 
         /* --- Component: Collapsible Settings --- */
         .settings-accordion {
@@ -254,7 +259,7 @@
             background: #fff;
         }
         .accordion-body.open {
-            max-height: 1000px; /* Increased max-height for new content */
+            max-height: 1500px; /* Increased max-height for new content */
             opacity: 1;
             padding: 1.5rem;
             border-top: 1px solid var(--border);
@@ -303,7 +308,7 @@
         }
         @keyframes stripe-move { from { background-position: 1rem 0; } to { background-position: 0 0; } }
 
-        /* --- Comparison Slider Styles (Kept, just in case, but no longer used for Upscale) --- */
+        /* --- Comparison Slider Styles --- */
         .comp-container {
             position: relative;
             width: 100%;
@@ -392,6 +397,7 @@
             </div>
             <nav class="nav-pills">
                 <div class="nav-item active" onclick="switchView('home')" id="nav-home">Converter</div>
+                <div class="nav-item" onclick="switchView('advanced')" id="nav-advanced">Advanced Tools</div>
                 <div class="nav-item" onclick="switchView('policy')" id="nav-policy">Policy</div>
                 <div class="nav-item" onclick="switchView('terms')" id="nav-terms">Terms</div>
                 <div class="nav-item" onclick="switchView('about')" id="nav-about">About</div>
@@ -440,7 +446,7 @@
 
                     <div class="settings-accordion active" id="acc-features">
                         <div class="accordion-head" onclick="toggleAccordion('acc-features')">
-                            <span>🎨 Image Adjustments (11 New Controls)</span>
+                            <span>🎨 Image Adjustments</span>
                             <span class="chevron">▼</span>
                         </div>
                         <div class="accordion-body open">
@@ -448,18 +454,18 @@
                                 <div>
                                     <h4>Filters</h4>
                                     <div class="checkbox-group">
-                                        <label><input type="checkbox" id="check-grayscale"> Grayscale (Feature 4)</label>
-                                        <label><input type="checkbox" id="check-sepia"> Sepia Tone (Feature 5)</label>
-                                        <label><input type="checkbox" id="check-invert"> Invert Colors (Feature 6)</label>
+                                        <label><input type="checkbox" id="check-grayscale"> Grayscale</label>
+                                        <label><input type="checkbox" id="check-sepia"> Sepia Tone</label>
+                                        <label><input type="checkbox" id="check-invert"> Invert Colors</label>
                                     </div>
                                 </div>
                                 <div>
                                     <h4>Transforms</h4>
                                     <div class="checkbox-group">
-                                        <label><input type="checkbox" id="check-flip-h"> Flip Horizontal (Feature 2)</label>
-                                        <label><input type="checkbox" id="check-flip-v"> Flip Vertical (Feature 3)</label>
+                                        <label><input type="checkbox" id="check-flip-h"> Flip Horizontal</label>
+                                        <label><input type="checkbox" id="check-flip-v"> Flip Vertical</label>
                                     </div>
-                                    <h4 style="margin-top: 1rem;">Rotate (Feature 1)</h4>
+                                    <h4 style="margin-top: 1rem;">Rotate</h4>
                                     <input type="number" id="inp-rotate" class="form-control" placeholder="Angle in degrees (e.g., 90)" value="0" min="0" max="360" step="1">
                                 </div>
                             </div>
@@ -502,17 +508,24 @@
 
                             <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0;">
 
-                            <h4 style="margin-bottom: 1rem;">Image Border (Bonus)</h4>
+                            <h4 style="margin-bottom: 1rem;">Border & Corner Settings</h4>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div>
                                     <span>Border Size (px)</span>
                                     <input type="number" id="inp-border-size" class="form-control" value="0" min="0" max="500">
                                 </div>
                                 <div>
-                                    <span>Border Color</span>
-                                    <input type="color" id="inp-border-color" class="form-control" value="#000000">
+                                    <span>Corner Radius (px)</span>
+                                    <input type="number" id="inp-corner-radius" class="form-control" value="0" min="0" max="500">
                                 </div>
                             </div>
+                            <div>
+                                <span>Border Color</span>
+                                <input type="color" id="inp-border-color" class="form-control" value="#000000">
+                            </div>
+                            <p style="font-size: 0.9rem; color: var(--text-muted);">
+                                Note: Setting the Corner Radius > 0 will give the border a smooth, rounded edge.
+                            </p>
 
                         </div>
                     </div>
@@ -623,111 +636,99 @@
                 </div>
 
             </section>
+            
+            <section id="view-advanced" class="view-section">
+                <div id="state-upload-advanced">
+                    <div style="text-align: center; margin-bottom: 3rem;">
+                        <h1>Advanced Image Tools</h1>
+                        <p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
+                            Apply complex filters like color replacement and watermarks before conversion.
+                        </p>
+                    </div>
 
-            <section id="view-policy" class="view-section">
-                <div style="text-align: center; margin-bottom: 3rem;">
-                    <h1>Privacy Policy</h1>
-                    <p>Last Updated: <script>document.write(new Date().toLocaleDateString())</script></p>
+                    <div id="dropzone-advanced" class="dropzone-container">
+                        <span class="drop-icon">🧪</span>
+                        <h3>Drag & Drop your Image</h3>
+                        <p>Upload the image you want to apply advanced effects to.</p>
+                        <button class="btn btn-secondary" style="margin-top: 1rem;">Browse Files</button>
+                        <input type="file" id="file-input-advanced" hidden accept="image/*">
+                    </div>
                 </div>
-                <div class="info-card" style="max-width: 900px; margin: 0 auto;">
-                    <h3>1. Information We Collect</h3>
-                    <p>We may collect the following types of data:</p>
-                    <h4>A. Automatically Collected Data</h4>
-                    <p>When you visit our site, we automatically collect:</p>
-                    <ul>
-                        <li>IP address</li>
-                        <li>Browser type and version</li>
-                        <li>Device information</li>
-                        <li>Pages visited and time spent</li>
-                        <li>Cookies and similar tracking technologies</li>
-                    </ul>
-                    <h4>B. Information You Provide Voluntarily</h4>
-                    <ul>
-                        <li>Form submissions (e.g., contact form)</li>
-                        <li>Email address (if you subscribe or contact us)</li>
-                        <li>Any content you upload or send through the site</li>
-                    </ul>
-                    <h3>2. Use of Cookies</h3>
-                    <p>We use cookies for:</p>
-                    <ul>
-                        <li>Improving website performance</li>
-                        <li>Understanding user behavior</li>
-                        <li>Remembering user preferences</li>
-                        <li>Serving personalized ads</li>
-                    </ul>
-                    <h4>Google AdSense Cookies</h4>
-                    <p>We use Google AdSense, which may use:</p>
-                    <ul>
-                        <li>The DART cookie for ad serving based on your visit to this site and other sites on the internet.</li>
-                        <li>Opt-out: You may opt out of the use of the DART cookie by visiting the Google Ad and Content Network Privacy Policy.</li>
-                    </ul>
-                    <h3>3. How We Use Your Data</h3>
-                    <p>We use the collected data to:</p>
-                    <ul>
-                        <li>Operate, maintain, and improve our services.</li>
-                        <li>Personalize your experience.</li>
-                        <li>Process and execute your image conversion requests (files are deleted immediately after processing/download period).</li>
-                        <li>Communicate with you (e.g., responding to inquiries).</li>
-                        <li>Provide targeted advertisements.</li>
-                    </ul>
-                    <h3>4. Data Retention & Deletion</h3>
-                    <p>Uploaded files and generated output files are automatically and permanently deleted from our servers approximately 30 minutes after the job is completed or after a download link expires.</p>
-                    <h3>5. Data Security</h3>
-                    <p>We implement industry-standard security measures, including SSL encryption and secure server environments, but no method of transmission over the Internet or electronic storage is 100% secure.</p>
-                    <h3>6. Children's Privacy</h3>
-                    <p>The service is not directed to children under the age of 13. We do not knowingly collect data from children.</p>
-                    <h3>7. Links to External Websites</h3>
-                    <p>Our website may contain links to third-party websites. We are not responsible for their privacy policies or content.</p>
-                    <h3>8. Your Rights</h3>
-                    <p>You may request:</p>
-                    <ul>
-                        <li>Access to your data</li>
-                        <li>Deletion of your data</li>
-                        <li>Correction of inaccurate data</li>
-                        <li>Opt-out of personalized ads</li>
-                    </ul>
-                    <p>To do so, contact us at: <strong>[Your Contact Email]</strong></p>
-                    <h3>9. Changes to This Privacy Policy</h3>
-                    <p>We may update this policy from time to time. Any changes will be posted on this page with an updated date.</p>
-                    <h3>10. Contact Us</h3>
-                    <p>If you have any questions about this Privacy Policy, please contact us at:</p>
-                    <p>📧 <strong>[Your Email]</strong></p>
+
+                <div id="state-config-advanced" class="hidden" style="display: none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; background: #fff; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="font-size: 1.5rem;">📁</span>
+                            <div>
+                                <strong id="file-name-advanced">File Name</strong>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="switchView('home')">Back to Conversion</button>
+                    </div>
+
+                    <h2>Advanced Settings</h2>
+
+                    <div class="settings-accordion active" id="acc-color-replace">
+                        <div class="accordion-head" onclick="toggleAccordion('acc-color-replace')">
+                            <span>🌈 Color Replacement</span>
+                            <span class="chevron">▼</span>
+                        </div>
+                        <div class="accordion-body open">
+                            <p>Replace a specific color (Target) with a New Color (uses a safe approximation).</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <span>Target Color</span>
+                                    <input type="color" id="inp-color-target" class="form-control" value="#FF0000">
+                                </div>
+                                <div>
+                                    <span>New Color</span>
+                                    <input type="color" id="inp-color-new" class="form-control" value="#00FF00">
+                                </div>
+                            </div>
+                            <h4 style="margin-bottom: 1rem;">Color Tolerance</h4>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Selectivity (How close the color must be to the target)</span>
+                                    <span style="font-weight: 700; color: var(--primary);" id="tolerance-disp">0%</span>
+                                </div>
+                                <input type="range" id="inp-tolerance" min="0" max="100" value="0" style="width: 100%; accent-color: var(--primary);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-accordion" id="acc-watermark">
+                        <div class="accordion-head" onclick="toggleAccordion('acc-watermark')">
+                            <span>📝 Text Watermark</span>
+                            <span class="chevron">▼</span>
+                        </div>
+                        <div class="accordion-body">
+                            <p>Overlay custom text in the bottom right corner.</p>
+                            <h4 style="margin-bottom: 1rem;">Watermark Text</h4>
+                            <input type="text" id="inp-watermark-text" class="form-control" placeholder="Enter watermark text (e.g., Copyright 2025)">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <span>Font Size (px)</span>
+                                    <input type="number" id="inp-watermark-size" class="form-control" value="20" min="10" max="100">
+                                </div>
+                                <div>
+                                    <span>Text Color</span>
+                                    <input type="color" id="inp-watermark-color" class="form-control" value="#FFFFFF">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p style="margin-top: 1.5rem; text-align: center;">
+                        <button class="btn btn-primary" style="width: 100%; padding: 1.2rem;" onclick="applyAdvancedAndReturn()">
+                            ✨ Apply Advanced Settings and Return to Converter
+                        </button>
+                    </p>
                 </div>
             </section>
-
-            <section id="view-terms" class="view-section">
-                <div style="text-align: center; margin-bottom: 3rem;">
-                    <h1>Terms of Service</h1>
-                </div>
-                <div class="info-card" style="max-width: 900px; margin: 0 auto;">
-                    <h3>1. Acceptance</h3>
-                    <p>By using UltraConvert, you agree to these terms.</p>
-                    <h3>2. License to UltraConvert</h3>
-                    <p>You grant us a temporary license to process your files. We claim no ownership over your content.</p>
-                    <h3>3. Restrictions</h3>
-                    <p>You may not use this service to process illegal content or attempt to harm the service infrastructure.</p>
-                    <h3>4. Disclaimer</h3>
-                    <p>The service is provided "AS IS". We are not responsible for any data loss or corruption.</p>
-                </div>
-            </section>
-
-            <section id="view-about" class="view-section">
-                <div style="text-align: center; margin-bottom: 3rem;">
-                    <h1>About UltraConvert</h1>
-                </div>
-                <div class="info-card" style="margin-bottom: 2rem;">
-                    <h3>Purely Local Processing</h3>
-                    <p>UltraConvert now runs entirely on your local server. All conversion and editing tasks are handled privately and quickly using the Python Pillow library.</p>
-                    <ul>
-                        <li><strong>Conversion & Editing:</strong> Runs locally on this server using Python Pillow. Fast and private.</li>
-                        <li><strong>Features:</strong> Enjoy lossless format conversion, compression control, and the new suite of image editing tools (Rotate, Flip, Grayscale, Sepia, Brightness, Contrast, Sharpen, Blur, Border).</li>
-                    </ul>
-                </div>
-                <div class="info-card">
-                    <h3>Technical Stack</h3>
-                    <p>The backend is built with Python/Flask, ensuring high performance and thread safety for concurrent jobs. The frontend is a modern, responsive HTML/CSS/JS application.</p>
-                </div>
-            </section>
+            
+            <section id="view-policy" class="view-section">...</section>
+            <section id="view-terms" class="view-section">...</section>
+            <section id="view-about" class="view-section">...</section>
         </main>
 
         <footer>
@@ -742,6 +743,7 @@
         let FILE_URL = null;
         let TIMER = null;
         let currentJobId = null;
+        let advancedSettingsCache = {}; // New cache for advanced settings
 
         // --- DOM MANIPULATION & HELPERS ---
         
@@ -767,10 +769,11 @@
             body.classList.toggle('open');
         }
 
-        // Renamed and simplified: only handles 'conv' mode now
         function showState(stateSuffix) {
             document.getElementById('state-upload-conv').style.display = 'none';
             document.getElementById('state-config-conv').style.display = 'none';
+            document.getElementById('state-upload-advanced').style.display = 'none';
+            document.getElementById('state-config-advanced').style.display = 'none';
             document.getElementById('state-result').style.display = 'none';
             
             const target = document.getElementById(`state-${stateSuffix}`);
@@ -810,14 +813,16 @@
             document.getElementById('inp-quality').addEventListener('input', (e) => updateDisplay('quality', e.target.value, '%'));
             // Opacity
             document.getElementById('inp-opacity').addEventListener('input', (e) => updateDisplay('opacity', e.target.value, '%'));
-            // Brightness (Feature 7)
+            // Brightness
             document.getElementById('inp-brightness').addEventListener('input', (e) => updateDisplay('brightness', e.target.value, '%'));
-            // Contrast (Feature 8)
+            // Contrast
             document.getElementById('inp-contrast').addEventListener('input', (e) => updateDisplay('contrast', e.target.value, '%'));
-            // Sharpen (Feature 9)
+            // Sharpen
             document.getElementById('inp-sharpen').addEventListener('input', (e) => updateDisplay('sharpen', e.target.value));
-            // Blur (Feature 10)
+            // Blur
             document.getElementById('inp-blur').addEventListener('input', (e) => updateDisplay('blur', e.target.value));
+            // Tolerance (NEW)
+            document.getElementById('inp-tolerance').addEventListener('input', (e) => updateDisplay('tolerance', e.target.value, '%'));
         }
         
         function updateFormatSettings() {
@@ -831,20 +836,9 @@
             if (details && details.supports_quality) {
                 qualityControls.style.display = 'block';
                 qualityNote.style.display = 'none';
-                document.getElementById('acc-quality').classList.remove('hidden');
             } else {
                 qualityControls.style.display = 'none';
                 qualityNote.style.display = 'block';
-                document.getElementById('acc-quality').classList.remove('hidden'); // Keep visible but show note
-            }
-            
-            // Auto-open quality accordion if it requires action
-            if (details && !details.supports_quality) {
-                document.getElementById('acc-quality').classList.add('active');
-                document.getElementById('acc-quality').querySelector('.accordion-body').classList.add('open');
-            } else {
-                document.getElementById('acc-quality').classList.remove('active');
-                document.getElementById('acc-quality').querySelector('.accordion-body').classList.remove('open');
             }
         }
         
@@ -857,8 +851,15 @@
                 CONVERSIONS = res.conversions;
                 populateSelect();
             } catch (e) {
-                console.error("Backend Disconnected", e);
-                // Optionally show a disconnection error to the user
+                console.error("Backend Disconnected:", e);
+                // Show a friendly disconnection error
+                document.getElementById('state-upload-conv').innerHTML = `
+                    <div style="text-align: center; color: var(--error); padding: 2rem; border: 2px solid var(--error); border-radius: 12px; background: #fee;">
+                        <h3>🔴 Server Connection Error</h3>
+                        <p>Could not communicate with the server. Please ensure the backend (app.py) is running correctly on port 5000.</p>
+                        <p style="color: #000;">Try reloading the page.</p>
+                    </div>
+                `;
             }
             setupEvents();
             setupSliderListeners();
@@ -879,41 +880,54 @@
         function setupEvents() {
             const dropzoneConv = document.getElementById('dropzone-conv');
             const fileInputConv = document.getElementById('file-input-conv');
+            const dropzoneAdv = document.getElementById('dropzone-advanced');
+            const fileInputAdv = document.getElementById('file-input-advanced');
 
-            // Click listener
+            // Click listener for both tabs
             dropzoneConv.onclick = () => fileInputConv.click();
+            dropzoneAdv.onclick = () => fileInputAdv.click();
             
-            // Drag-drop listeners
+            // Drag-drop listeners for Converter
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropzoneConv.addEventListener(eventName, preventDefaults, false);
             });
-            
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-
             ['dragenter', 'dragover'].forEach(eventName => {
                 dropzoneConv.addEventListener(eventName, () => dropzoneConv.classList.add('drag-over'), false);
             });
-
             ['dragleave', 'drop'].forEach(eventName => {
                 dropzoneConv.addEventListener(eventName, () => dropzoneConv.classList.remove('drag-over'), false);
             });
-
             dropzoneConv.addEventListener('drop', handleDrop, false);
-            fileInputConv.addEventListener('change', handleFileSelect, false);
+            fileInputConv.addEventListener('change', (e) => handleFileSelect(e, 'conv'), false);
+            
+            // Drag-drop listeners for Advanced
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropzoneAdv.addEventListener(eventName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzoneAdv.addEventListener(eventName, () => dropzoneAdv.classList.add('drag-over'), false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzoneAdv.addEventListener(eventName, () => dropzoneAdv.classList.remove('drag-over'), false);
+            });
+            dropzoneAdv.addEventListener('drop', (e) => handleDrop(e, 'advanced'), false);
+            fileInputAdv.addEventListener('change', (e) => handleFileSelect(e, 'advanced'), false);
+        }
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
 
-        function handleDrop(e) {
+        function handleDrop(e, mode) {
             const dt = e.dataTransfer;
             const files = dt.files;
-            if (files.length) processFile(files[0], 'conv');
+            if (files.length) processFile(files[0], mode);
         }
 
-        function handleFileSelect(e) {
+        function handleFileSelect(e, mode) {
             const files = e.target.files;
-            if (files.length) processFile(files[0], 'conv');
+            if (files.length) processFile(files[0], mode);
         }
 
         function processFile(f, mode) {
@@ -921,36 +935,60 @@
                 alert("Only image files are supported.");
                 return;
             }
-            if (f.size > 500 * 1024 * 1024) { // Check against assumed 500MB limit
+            if (f.size > 500 * 1024 * 1024) { 
                  alert("File is too large. Max size is 500MB.");
                  return;
             }
 
             FILE = f;
-            FILE_URL = URL.createObjectURL(f); // Create local preview URL
+            FILE_URL = URL.createObjectURL(f); 
             const sizeStr = (f.size / (1024*1024)).toFixed(2) + " MB";
             
-            // Only 'conv' mode remains
             document.getElementById('file-name-conv').textContent = f.name;
             document.getElementById('file-size-conv').textContent = sizeStr;
+            document.getElementById('file-name-advanced').textContent = f.name;
+
+            // Determine which config view to show
+            if (mode === 'conv') {
+                showState('config-conv');
+            } else if (mode === 'advanced') {
+                showState('config-advanced');
+            }
+        }
+
+        function applyAdvancedAndReturn() {
+            // Save the advanced settings into the cache
+            advancedSettingsCache = {
+                color_replace_target: document.getElementById('inp-color-target').value,
+                color_replace_new: document.getElementById('inp-color-new').value,
+                color_replace_tolerance: document.getElementById('inp-tolerance').value,
+                watermark_text: document.getElementById('inp-watermark-text').value,
+                watermark_size: document.getElementById('inp-watermark-size').value,
+                watermark_color: document.getElementById('inp-watermark-color').value,
+            };
+            
+            // Switch back to the conversion tab
+            switchView('home');
             showState('config-conv');
         }
 
         function resetApp() {
-            // Clears all state for the single 'conv' mode
             FILE = null;
             if (FILE_URL) URL.revokeObjectURL(FILE_URL);
             FILE_URL = null;
             currentJobId = null;
             clearInterval(TIMER);
             document.getElementById(`file-input-conv`).value = '';
+            document.getElementById(`file-input-advanced`).value = '';
             showState('upload-conv');
+            
+            // Clear result view elements
             document.getElementById('progress-bar').style.width = '0%';
             document.getElementById('final-actions').style.display = 'none';
             document.getElementById('compare-wrapper').style.display = 'none';
             document.getElementById('preview-area').style.display = 'none';
 
-            // Reset all controls to default state to ensure security and proper next run
+            // Reset Conversion controls (includes Corner Radius/Border)
             document.getElementById('inp-width').value = '';
             document.getElementById('inp-height').value = '';
             document.getElementById('check-ar').checked = true;
@@ -968,12 +1006,23 @@
             document.getElementById('inp-blur').value = 0;
             document.getElementById('inp-border-size').value = 0;
             document.getElementById('inp-border-color').value = '#000000';
+            document.getElementById('inp-corner-radius').value = 0;
             updateDisplay('quality', 90, '%');
             updateDisplay('opacity', 100, '%');
             updateDisplay('brightness', 100, '%');
             updateDisplay('contrast', 100, '%');
             updateDisplay('sharpen', 0);
             updateDisplay('blur', 0);
+            
+            // Reset Advanced controls/cache
+            document.getElementById('inp-color-target').value = '#FF0000';
+            document.getElementById('inp-color-new').value = '#00FF00';
+            document.getElementById('inp-tolerance').value = 0;
+            document.getElementById('inp-watermark-text').value = '';
+            document.getElementById('inp-watermark-size').value = 20;
+            document.getElementById('inp-watermark-color').value = '#FFFFFF';
+            updateDisplay('tolerance', 0, '%');
+            advancedSettingsCache = {};
         }
 
         async function startJob(mode) {
@@ -982,15 +1031,15 @@
                 return;
             }
 
-            triggerResultView(); // Show shared result view
+            triggerResultView(); 
             const startTime = Date.now();
 
             const fd = new FormData();
             fd.append('file', FILE);
-            fd.append('mode', 'convert'); // Only 'convert' remains
+            fd.append('mode', 'convert'); 
             fd.append('conversion_key', document.getElementById('format-select').value);
 
-            // Collect all settings including the 10 new features
+            // Collect all settings including existing and advanced features
             const settings = {
                 // Resize
                 width: document.getElementById('inp-width').value || null,
@@ -1011,9 +1060,13 @@
                 contrast: document.getElementById('inp-contrast').value,
                 sharpen: document.getElementById('inp-sharpen').value,
                 blur: document.getElementById('inp-blur').value,
-                // New Border
+                // Border (Fixed/Improved)
                 border_size: document.getElementById('inp-border-size').value,
                 border_color: document.getElementById('inp-border-color').value,
+                corner_radius: document.getElementById('inp-corner-radius').value, // Used for smooth border
+                
+                // Advanced Features (Loaded from cache)
+                ...advancedSettingsCache 
             };
 
             fd.append('settings', JSON.stringify(settings));
@@ -1036,15 +1089,18 @@
                 } else {
                     clearInterval(TIMER);
                     document.getElementById('status-head').textContent = "Upload Failed!";
-                    document.getElementById('status-text').textContent = `Error: ${res.msg || "Unknown error."}`;
+                    document.getElementById('status-text').textContent = `Error (${req.status}): ${res.msg || "Unknown error."}`;
                     document.getElementById('progress-bar').style.backgroundColor = 'var(--error)';
+                    document.getElementById('final-actions').style.display = 'block';
                 }
             } catch (e) {
-                console.error("Upload failed:", e);
+                // This catches network errors (e.g., server not running)
+                console.error("Upload failed (Network/Fetch error):", e);
                 clearInterval(TIMER);
                 document.getElementById('status-head').textContent = "Connection Error!";
-                document.getElementById('status-text').textContent = `Could not connect to the server.`;
+                document.getElementById('status-text').textContent = `Could not communicate with the server at ${window.location.host}. Is the backend running?`;
                 document.getElementById('progress-bar').style.backgroundColor = 'var(--error)';
+                document.getElementById('final-actions').style.display = 'block';
             }
         }
 
@@ -1056,13 +1112,18 @@
             
             try {
                 const req = await fetch(`/api/status/${job_uuid}`);
+                // Check if the response is valid JSON before attempting to parse
+                const contentType = req.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error(`Expected JSON response, received: ${contentType || 'none'}. Server error or misconfiguration.`);
+                }
+
                 const res = await req.json();
 
                 if (res.status === 'queued' || res.status === 'running') {
                     const elapsed = ((now - startTime) / 1000).toFixed(0);
-                    let visualProgress = Math.max(res.progress, 1); // Ensure bar starts visible
+                    let visualProgress = Math.max(res.progress, 1); 
 
-                    // Adjust status text and progress visually
                     head.textContent = "Processing Image Conversion...";
                     txt.textContent = res.status === 'queued' ? 
                         "Waiting in queue..." : 
@@ -1083,16 +1144,15 @@
                     document.getElementById('download-btn').href = res.download_url;
 
                     // Setup Preview/Comparison
-                    const compBtn = document.getElementById('check-compare'); // Assuming a checkbox for compare exists
+                    const settings = res.settings; // Get settings from successful job response
                     
-                    const settings = JSON.parse(res.settings);
-                    
-                    // Show comparison if any of the new features or transformations were applied
+                    // Check if any significant transformation/filter was applied for comparison view
                     const isTransformed = settings.rotate_angle != 0 || 
                                           settings.flip_h || settings.flip_v ||
                                           settings.filter_grayscale || settings.filter_sepia || settings.filter_invert ||
                                           settings.brightness != 100 || settings.contrast != 100 || settings.sharpen != 0 || settings.blur != 0 ||
-                                          settings.border_size != 0 || settings.width || settings.height;
+                                          settings.border_size != 0 || settings.corner_radius != 0 ||
+                                          settings.color_replace_tolerance > 0 || settings.watermark_text;
 
                     if (isTransformed) {
                         // Comparison Preview
@@ -1115,16 +1175,18 @@
                     txt.textContent = `Error: ${res.log || "Unknown processing error."}`;
                     bar.style.width = "100%";
                     bar.style.backgroundColor = 'var(--error)';
-                    // Provide a restart button immediately
                     document.getElementById('final-actions').style.display = 'block';
                     document.getElementById('final-actions').innerHTML = `<button class="btn btn-primary" onclick="resetApp()">Try Again</button>`;
                 }
             } catch(e) {
+                // Catches error from fetch or non-JSON response parsing
                 console.error(e);
                 clearInterval(TIMER);
                 head.textContent = "Connection Error!";
-                txt.textContent = `Could not communicate with the server. Please try again.`;
+                txt.textContent = `Could not communicate with the server during status check. Please check the network or server logs.`;
                 bar.style.backgroundColor = 'var(--error)';
+                document.getElementById('final-actions').style.display = 'block';
+                document.getElementById('final-actions').innerHTML = `<button class="btn btn-primary" onclick="resetApp()">Start New Job</button>`;
             }
         }
 

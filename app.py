@@ -62,7 +62,6 @@ CONVERSION_MAP = {
                     'mime': 'image/tiff'},
     'pillow_ico': {'name': 'ICO (Favicon)', 'ext': 'ico', 'format': 'ICO', 'supports_quality': False,
                    'mime': 'image/x-icon'},
-    # AI Upscale removed
     'pillow_avif': {'name': 'AVIF (.avif) - Lossy/Lossless', 'ext': 'avif', 'format': 'AVIF', 'supports_quality': True,
                     'mime': 'image/avif'},
     'pillow_jxl': {'name': 'JpegXL (.jxl) - Lossy/Lossless', 'ext': 'jxl', 'format': 'JXL', 'supports_quality': True,
@@ -126,6 +125,7 @@ def get_file_magic_mime(file_stream):
     header = file_stream.read(2048)
     file_stream.seek(0)
     try:
+        # Note: Requires python-magic library in the environment
         from magic import from_buffer
         return from_buffer(header, mime=True)
     except ImportError:
@@ -151,7 +151,7 @@ def run_processing_job(job_id):
     else:
         with JOB_LOCK:
             job['status'] = 'failed'
-            job['log'] = "Invalid job mode. Only 'convert' is supported." # Updated log message
+            job['log'] = "Invalid job mode. Only 'convert' is supported."
 
 
 def run_conversion_job(job_id):
@@ -194,7 +194,7 @@ def run_conversion_job(job_id):
         # Handle animations (seek 0 unless GIF/WEBP target)
         if getattr(img, "is_animated", False) and target_format not in ['GIF', 'WEBP']:
             img.seek(0)
-        
+
         # Determine the PIL resampling filter based on user setting (Feature 22)
         resample_filter = Resampling.LANCZOS # High quality default
         req_resample = settings.get('resample_filter', 'lanczos')
@@ -223,33 +223,34 @@ def run_conversion_job(job_id):
             current_w, current_h = img.size
             final_w = w_int if w_int > 0 else current_w
             final_h = h_int if h_int > 0 else current_h
-            
-            if maintain_ar and w_int > 0 and h_int > 0:
+
+            if maintain_ar and (w_int > 0 or h_int > 0):
                 # Maintain aspect ratio by fitting/containing the image
-                # Resampling filter is used here
-                img.thumbnail((w_int, h_int), resample=resample_filter) 
+                if w_int > 0 and h_int > 0:
+                     # Fit inside the bounding box
+                    img.thumbnail((w_int, h_int), resample=resample_filter)
+                elif w_int > 0:
+                    ratio = w_int / current_w
+                    final_h = int(current_h * ratio)
+                    img = img.resize((w_int, final_h), resample=resample_filter)
+                elif h_int > 0:
+                    ratio = h_int / current_h
+                    final_w = int(current_w * ratio)
+                    img = img.resize((final_w, h_int), resample=resample_filter)
+
             elif w_int > 0 and h_int > 0:
                 # Force resize/stretch
                 img = img.resize((w_int, h_int), resample=resample_filter)
-            elif w_int > 0:
-                # Resize based on width only (maintaining aspect ratio)
-                ratio = w_int / current_w
-                final_h = int(current_h * ratio)
-                img = img.resize((w_int, final_h), resample=resample_filter)
-            elif h_int > 0:
-                # Resize based on height only (maintaining aspect ratio)
-                ratio = h_int / current_h
-                final_w = int(current_w * ratio)
-                img = img.resize((final_w, h_int), resample=resample_filter)
-        
+
+
         with JOB_LOCK:
-            job['progress'] = 30 
-        
+            job['progress'] = 30
+
         # B. ROTATION AND FLIPPING (Features 1, 2)
-        
+
         rotation = settings.get('rotation', '0')
         flip = settings.get('flip', 'none')
-        
+
         if rotation != '0':
             # Rotate by degrees (must be 90, 180, 270)
             img = img.rotate(int(rotation), expand=True)
@@ -258,13 +259,13 @@ def run_conversion_job(job_id):
             img = ImageOps.mirror(img)
         elif flip == 'vertical':
             img = ImageOps.flip(img)
-        
+
         # C. COLOR ADJUSTMENTS (Features 3, 4, 5, 6)
-        
+
         # Convert to RGB/RGBA before applying enhancements if not already
         if img.mode not in ('RGB', 'RGBA', 'L'):
              img = img.convert('RGB')
-        
+
         # Grayscale (Feature 3)
         if settings.get('grayscale'):
             img = img.convert('L') # Convert to Grayscale
@@ -291,14 +292,14 @@ def run_conversion_job(job_id):
 
         with JOB_LOCK:
             job['progress'] = 40
-            
+
         # D. OPACITY/TRANSPARENCY HANDLING (Original Opacity Logic)
 
         try:
             opacity_val = int(settings.get('opacity', 100))
         except (ValueError, TypeError):
             opacity_val = 100
-            
+
         # Only apply if user requested < 100% opacity
         if 0 <= opacity_val < 100:
             # 1. Ensure we are in RGBA mode to manipulate alpha
@@ -314,8 +315,8 @@ def run_conversion_job(job_id):
 
         with JOB_LOCK:
             job['progress'] = 60
-            
-        # E. COLOR MODE & FORMAT HANDLING 
+
+        # E. COLOR MODE & FORMAT HANDLING
 
         # If target doesn't support transparency (JPEG, BMP), we must composite
         if target_format in ['JPEG', 'BMP']:
@@ -329,10 +330,10 @@ def run_conversion_job(job_id):
                 img = img.convert('RGB')
         elif target_format == 'ICO':
             img = ImageOps.contain(img, (256, 256))
-            
+
         with JOB_LOCK:
             job['progress'] = 80
-            
+
         # F. SAVING (Updated with new save options: Features 4, 5, 21, 16, 17, 18)
 
         save_params = {}
@@ -344,18 +345,18 @@ def run_conversion_job(job_id):
         # Feature 5: JPEG Progressive Scan
         if target_format == 'JPEG' and settings.get('progressive_jpeg'):
             save_params['progressive'] = True
-            
+
         # Feature 4: PNG Optimization
         if target_format == 'PNG' and settings.get('optimize_png'):
             save_params['optimize'] = True
-            
+
         # Feature 21: WebP Lossless/Lossy
         if target_format == 'WEBP':
             is_lossless = settings.get('webp_lossless', False)
             save_params['lossless'] = is_lossless
             if not is_lossless:
                  if 'quality' not in save_params:
-                     save_params['quality'] = 95 
+                     save_params['quality'] = 95
             else:
                 save_params.pop('quality', None)
 
@@ -389,18 +390,75 @@ def run_conversion_job(job_id):
             job['log'] = str(e)
 
 
-# Removed run_upscale_job
-# ... (rest of cleanup_old_files and start_cleanup_scheduler remains the same)
-
-# 3. API Routes (Updated)
-
+# 3. API Routes (Fixed and Updated)
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
     """Returns the conversion map to the frontend."""
     return jsonify({"conversions": CONVERSION_MAP}), 200
 
-# Removed download_input_file route (Comparison Slider Fix)
+@app.route('/api/upload', methods=['POST'])
+@limiter.limit("20 per hour")
+def upload_file():
+    """FIX: Handles file upload and queues the conversion job."""
+    if 'file' not in request.files:
+        return jsonify({"msg": "No file part"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"msg": "No selected file"}), 400
+
+    conversion_key = request.form.get('conversion_key')
+    settings_json = request.form.get('settings')
+    mode = request.form.get('mode', 'convert')
+
+    if not conversion_key or not settings_json:
+        return jsonify({"msg": "Missing conversion key or settings."}), 400
+
+    try:
+        settings = json.loads(settings_json)
+    except json.JSONDecodeError:
+        return jsonify({"msg": "Invalid JSON for settings."}), 400
+
+    if mode != 'convert':
+        return jsonify({"msg": "Unsupported operation mode."}), 400
+
+    # 1. Server-Side Validation & MIME Check
+    file_stream = io.BytesIO(file.read())
+    file.seek(0)
+    mime_type = get_file_magic_mime(file_stream)
+    if not mime_type.startswith('image/'):
+         return jsonify({"msg": f"Unsupported file type: {mime_type}. Must be an image."}), 415
+
+    # 2. Save file
+    original_filename = custom_secure_filename(file.filename)
+    job_uuid = secrets.token_urlsafe(16)
+    temp_filename = f"{job_uuid}_{original_filename}"
+    temp_filepath = os.path.join(TEMP_DIR, temp_filename)
+    file.save(temp_filepath)
+
+    # 3. Create Job and Queue
+    new_job = {
+        'job_uuid': job_uuid,
+        'mode': mode,
+        'status': 'queued',
+        'progress': 0,
+        'log': 'Job received and queued.',
+        'start_time': datetime.now(timezone.utc).isoformat(),
+        'input_filepath': temp_filepath,
+        'input_original_filename': original_filename,
+        'conversion_key': conversion_key,
+        'settings': settings,
+    }
+
+    with JOB_LOCK:
+        JOB_QUEUE[job_uuid] = new_job
+
+    # 4. Schedule processing in the background
+    WORKER_POOL.submit(run_processing_job, job_uuid)
+
+    return jsonify({"msg": "Upload successful", "job_uuid": job_uuid}), 200
+
 
 @app.route('/api/status/<string:job_uuid>', methods=['GET'])
 def get_job_status(job_uuid):
@@ -408,13 +466,13 @@ def get_job_status(job_uuid):
         job = JOB_QUEUE.get(job_uuid)
     if not job: return jsonify({"msg": "Not found"}), 404
     job_data = job.copy()
-    
+
     # Store the input file name for download naming in the frontend
-    job_data['input_original_filename'] = job.get('input_original_filename') 
+    job_data['input_original_filename'] = job.get('input_original_filename')
 
     if job_data['status'] == 'completed' and job_data.get('output_filepath'):
         job_data['download_url'] = url_for('download_file', job_uuid=job_uuid, _external=True)
-        
+
         # Remove output_filepath from the response payload
         job_data.pop('output_filepath', None)
 
@@ -424,7 +482,7 @@ def get_job_status(job_uuid):
                 os.remove(job_data['input_filepath'])
         except Exception as e:
             app.logger.warning(f"Failed to remove input file for job {job_uuid}: {e}")
-        
+
         # Remove input_filepath from the response payload
         if 'input_filepath' in job_data:
              job_data.pop('input_filepath', None)
@@ -440,8 +498,8 @@ def download_file(job_uuid):
         return jsonify({"msg": "Unavailable"}), 404
     output_filepath = job['output_filepath']
     details = CONVERSION_MAP.get(job['conversion_key'])
-    output_filename = os.path.basename(output_filepath) 
-    
+    output_filename = os.path.basename(output_filepath)
+
     try:
         return send_file(
             output_filepath,
@@ -455,6 +513,6 @@ def download_file(job_uuid):
 
 
 if __name__ == '__main__':
-    # Assume cleanup scheduler is still defined elsewhere or will be called by system
-    # start_cleanup_scheduler() 
+    # Start the cleanup scheduler if needed, not shown here for brevity
+    # start_cleanup_scheduler()
     app.run(debug=os.getenv('FLASK_DEBUG', 'False') == 'True', host='0.0.0.0', port=5000)

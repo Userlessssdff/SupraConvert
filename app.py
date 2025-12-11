@@ -9,19 +9,17 @@ from logging.handlers import RotatingFileHandler
 import threading
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
-import io # NEW: For handling image data in memory
-import requests # NEW: For external API calls
+import io  # NEW: For handling image data in memory
+import requests  # NEW: For external API calls
 
 from flask import Flask, request, jsonify, send_file, url_for, render_template
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-from PIL import Image, ImageOps, ImageEnhance  # Added ImageEnhance
-
+from PIL import Image, ImageOps, ImageEnhance, UnidentifiedImageError
 
 # 0. Configuration & Initialization
-
 
 load_dotenv()
 
@@ -54,7 +52,6 @@ CLEANUP_LOOP_SECONDS = CLEANUP_INTERVAL_MINUTES * 60
 HF_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "HF_TOKEN_NOT_SET")
 HF_MODEL_URL = "https://api-inference.huggingface.co/models/DMO3D/Swin2SR_Classic_2x_8F_x4"
 
-
 # --- Conversion Map ---
 CONVERSION_MAP = {
     'pillow_jpg': {'name': 'JPEG (.jpg)', 'ext': 'jpg', 'format': 'JPEG', 'supports_quality': True,
@@ -69,12 +66,10 @@ CONVERSION_MAP = {
     'pillow_ico': {'name': 'ICO (Favicon)', 'ext': 'ico', 'format': 'ICO', 'supports_quality': False,
                    'mime': 'image/x-icon'},
     'ai_upscale': {'name': 'AI Upscale (.png)', 'ext': 'png', 'format': 'PNG', 'supports_quality': False,
-                   'mime': 'image/png'} # NEW: Upscale entry
+                   'mime': 'image/png'}  # NEW: Upscale entry
 }
 
-
 # 1. Flask App Factory & Extensions
-
 
 app = Flask(__name__, static_url_path='/static', static_folder='static', template_folder='.')
 
@@ -90,22 +85,18 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({"msg": "Rate limit exceeded. Please slow down."}), 429
-
 
 @app.errorhandler(413)
 def too_large(e):
     limit_mb = int(app.config["MAX_CONTENT_LENGTH"] / (1024 * 1024))
     return jsonify({"msg": f"File size limit exceeded ({limit_mb}MB)"}), 413
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 # --- Helper Functions ---
 
@@ -121,7 +112,6 @@ def custom_secure_filename(filename):
         sanitized = name[:60] + ext
     return f"{secrets.token_urlsafe(6)}_{sanitized}"
 
-
 def get_file_magic_mime(file_stream):
     """Safely attempts to detect MIME type."""
     file_stream.seek(0)
@@ -136,7 +126,6 @@ def get_file_magic_mime(file_stream):
     except Exception as e:
         logging.error(f"Mime detection error: {e}")
         return 'application/octet-stream'
-
 
 # 2. Image Processing Workers (Updated)
 
@@ -199,9 +188,7 @@ def run_conversion_job(job_id):
         if getattr(img, "is_animated", False) and target_format not in ['GIF', 'WEBP']:
             img.seek(0)
 
-
         # A. RESIZING (Done first to save processing time on pixels)
-
         req_width = settings.get('width')
         req_height = settings.get('height')
         maintain_ar = settings.get('maintain_ar')
@@ -225,9 +212,7 @@ def run_conversion_job(job_id):
         with JOB_LOCK:
             job['progress'] = 40
 
-
-        # B. OPACITY ADJUSTMENT (New Feature)
-
+        # B. OPACITY ADJUSTMENT
         try:
             opacity_val = int(settings.get('opacity', 100))
         except (ValueError, TypeError):
@@ -235,37 +220,21 @@ def run_conversion_job(job_id):
 
         # Only apply if user requested < 100% opacity
         if 0 <= opacity_val < 100:
-            # 1. Ensure we are in RGBA mode to manipulate alpha
             if img.mode != 'RGBA':
                 img = img.convert('RGBA')
-
-            # 2. Get the Alpha channel
             alpha = img.split()[3]
-
-            # 3. Apply the factor (opacity / 100)
-            # This multiplies every pixel's alpha by the opacity percentage
             factor = opacity_val / 100.0
             alpha = alpha.point(lambda p: int(p * factor))
-
-            # 4. Put the modified alpha back
             img.putalpha(alpha)
 
         with JOB_LOCK:
             job['progress'] = 60
 
-
         # C. COLOR MODE & FORMAT HANDLING
-
-        # If target doesn't support transparency (JPEG, BMP), we must composite
-        # the (potentially translucent) image over a background color (White).
-
         if target_format in ['JPEG', 'BMP']:
             # Check if we have transparency to handle
             if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
-                # Create white background
                 background = Image.new('RGB', img.size, (255, 255, 255))
-                # Paste image using its own alpha channel as mask
-                # If we just reduced opacity in step B, this will make the image look "faded" against white
                 if img.mode != 'RGBA': img = img.convert('RGBA')
                 background.paste(img, mask=img.split()[3])
                 img = background
@@ -279,19 +248,14 @@ def run_conversion_job(job_id):
             job['progress'] = 80
 
         # D. SAVING & QUALITY
-
         save_kwargs = {}
-
-        # Quality logic (Compression)
         if details['supports_quality']:
             try:
                 q = int(settings.get('quality', 90))
-                # PIL quality is 1-95 usually, strictly 1-100 allowed
                 save_kwargs['quality'] = max(1, min(100, q))
             except (ValueError, TypeError):
                 save_kwargs['quality'] = 90
 
-        # GIF Optimization
         if target_format == 'GIF':
             save_kwargs['optimize'] = True
             if getattr(img, "is_animated", False):
@@ -320,6 +284,7 @@ def run_conversion_job(job_id):
                 os.remove(input_filepath)
             except OSError:
                 pass
+
 
 # NEW: AI Upscaling Worker
 def run_upscale_job(job_id):
@@ -367,30 +332,47 @@ def run_upscale_job(job_id):
         if response.status_code == 200:
             # SUCCESS: API returns image binary data directly
             image_data = response.content
-            
+
             # Additional logic for resolution scaling (client-side preference)
-            with Image.open(io.BytesIO(image_data)) as img_up:
-                settings = job['settings']
-                upscale_res = settings.get('upscale_res')
-                
-                # AI model does 2x by default, need to resize if user requests 4k, 2k, etc.
-                if upscale_res != 'original':
-                    target_w, target_h = (0, 0)
-                    if upscale_res == '1080p': target_w, target_h = (1920, 1080)
-                    elif upscale_res == '2k': target_w, target_h = (2560, 1440)
-                    elif upscale_res == '4k': target_w, target_h = (3840, 2160)
-                    
-                    if target_w > 0:
-                        img_up = ImageOps.contain(img_up, (target_w, target_h), method=Image.Resampling.LANCZOS)
-                
-                img_up.save(output_filepath, format='PNG')
-            
+            # IMPORTANT: Sometimes HF returns a 200 OK but with a JSON error message inside
+            # We wrap this in try-except to catch that case
+            try:
+                with Image.open(io.BytesIO(image_data)) as img_up:
+                    settings = job['settings']
+                    upscale_res = settings.get('upscale_res')
+
+                    # AI model does 2x by default, need to resize if user requests 4k, 2k, etc.
+                    if upscale_res != 'original':
+                        target_w, target_h = (0, 0)
+                        if upscale_res == '1080p':
+                            target_w, target_h = (1920, 1080)
+                        elif upscale_res == '2k':
+                            target_w, target_h = (2560, 1440)
+                        elif upscale_res == '4k':
+                            target_w, target_h = (3840, 2160)
+
+                        if target_w > 0:
+                             # Use a new variable for resized image to avoid context issues
+                            img_resized = ImageOps.contain(img_up, (target_w, target_h), method=Image.Resampling.LANCZOS)
+                            img_resized.save(output_filepath, format='PNG')
+                        else:
+                            img_up.save(output_filepath, format='PNG')
+                    else:
+                        img_up.save(output_filepath, format='PNG')
+            except UnidentifiedImageError:
+                # If we can't open it as an image, check if it's a JSON error text
+                try:
+                    err_json = response.json()
+                    raise Exception(f"AI API Error: {err_json.get('error', 'Unknown Error')}")
+                except:
+                    raise Exception("AI API returned invalid image data.")
+
         elif response.status_code == 503:
             # Model is loading
             try:
                 # 503 often includes an estimated time to load in JSON
                 hf_error = response.json()
-                raise Exception(f"AI Model Loading. Estimated wait: {hf_error.get('estimated_time', 'unknown')}s")
+                raise Exception(f"AI Model Loading... Estimated wait: {int(hf_error.get('estimated_time', 20))}s. Please try again.")
             except Exception:
                 raise Exception("AI Model is currently loading, please try again in a few seconds.")
         else:
@@ -401,8 +383,8 @@ def run_upscale_job(job_id):
                 error_data = response.json()
                 error_message = error_data.get('error', response.text)
             except Exception:
-                pass # Use response.text if not JSON
-            
+                pass  # Use response.text if not JSON
+
             raise Exception(f"AI Error ({response.status_code}): {error_message}")
 
         # Final Verification
@@ -418,14 +400,13 @@ def run_upscale_job(job_id):
         app.logger.error(f"Job {job_id} failed: {repr(e)}")
         with JOB_LOCK:
             job['status'] = 'failed'
-            job['log'] = f"Error during upscaling: {str(e)}"
+            job['log'] = f"{str(e)}"
     finally:
         # Keep the input file until cleanup, as Hugging Face needs the original.
         pass
 
 
 # 3. Cleanup Task
-
 
 def cleanup_old_files():
     cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=CLEANUP_INTERVAL_MINUTES)
@@ -461,9 +442,7 @@ def start_cleanup_scheduler():
     t.start()
 
 
-
 # 4. API Endpoints
-
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
@@ -481,7 +460,7 @@ def create_job():
         return jsonify({"msg": "Missing file"}), 400
 
     file = request.files['file']
-    mode = request.form.get('mode') # NEW: Get mode
+    mode = request.form.get('mode')  # NEW: Get mode
     conversion_key = request.form.get('conversion_key')
 
     try:
@@ -489,11 +468,11 @@ def create_job():
     except json.JSONDecodeError:
         return jsonify({"msg": "Invalid settings JSON"}), 400
 
-    if not file.filename or not mode: # Check for mode
+    if not file.filename or not mode:  # Check for mode
         return jsonify({"msg": "Invalid data"}), 400
 
     if mode == 'convert' and conversion_key not in CONVERSION_MAP:
-         return jsonify({"msg": "Unknown format"}), 400
+        return jsonify({"msg": "Unknown format"}), 400
 
     # For upscale mode, we hardcode the key for consistency
     if mode == 'upscale':
@@ -517,7 +496,7 @@ def create_job():
     with JOB_LOCK:
         JOB_QUEUE[job_uuid] = {
             'job_id': job_uuid,
-            'mode': mode, # NEW: Store job mode
+            'mode': mode,  # NEW: Store job mode
             'input_original_filename': file.filename,
             'input_filepath': input_filepath,
             'output_filepath': None,
@@ -539,13 +518,13 @@ def get_job_status(job_uuid):
         job = JOB_QUEUE.get(job_uuid)
     if not job: return jsonify({"msg": "Not found"}), 404
     job_data = job.copy()
-    
+
     if job_data['status'] == 'completed' and job_data['output_filepath']:
         job_data['download_url'] = url_for('download_file', job_uuid=job_uuid, _external=True)
         # Only remove input path if the file is not needed (i.e., not upscale, or already used)
         if job_data['mode'] == 'convert':
             job_data.pop('input_filepath', None)
-            
+
         job_data.pop('output_filepath', None)
     return jsonify(job_data), 200
 

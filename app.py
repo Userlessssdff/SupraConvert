@@ -50,7 +50,7 @@ CLEANUP_LOOP_SECONDS = CLEANUP_INTERVAL_MINUTES * 60
 
 # --- AI Configuration ---
 HF_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "HF_TOKEN_NOT_SET")
-HF_MODEL_URL = "https://api-inference.huggingface.co/models/DMO3D/Swin2SR_Classic_2x_8F_x4"
+HF_MODEL_URL = "https://router.huggingface.co/models/DMO3D/Swin2SR_Classic_2x_8F_x4"
 
 # --- Conversion Map ---
 CONVERSION_MAP = {

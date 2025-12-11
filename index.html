@@ -512,10 +512,10 @@
                             <div class="comp-container">
                                 <img id="comp-before" class="comp-img" src="" alt="Before">
                                 <div class="comp-label" style="left: 10px;">Before</div>
-
+                                
                                 <img id="comp-after" class="comp-img comp-img-after" src="" alt="After">
                                 <div class="comp-label" style="right: 10px;">After</div>
-
+                                
                                 <input type="range" min="0" max="100" value="50" class="comp-slider" id="comp-slider-input" oninput="moveSlider(this.value)">
                             </div>
                             <p style="font-size: 0.9rem; color: var(--text-muted);">Slide to compare</p>
@@ -593,7 +593,7 @@
                 <div class="info-card" style="max-width: 900px; margin: 0 auto;">
                     <h3>1. Information We Collect</h3>
                     <p>We may collect the following types of data:</p>
-
+                    
                     <h4>A. Automatically Collected Data</h4>
                     <p>When you visit our site, we automatically collect:</p>
                     <ul>
@@ -691,13 +691,13 @@
                 <div class="info-card" style="max-width: 900px; margin: 0 auto;">
                     <h3>1. Acceptance</h3>
                     <p>By using UltraConvert, you agree to these terms.</p>
-
+                    
                     <h3>2. License to UltraConvert</h3>
                     <p>You grant us a temporary license to process your files. We claim no ownership over your content.</p>
-
+                    
                     <h3>3. Restrictions</h3>
                     <p>You may not use this service to process illegal content or attempt to harm the service infrastructure.</p>
-
+                    
                     <h3>4. Disclaimer</h3>
                     <p>The service is provided "AS IS". We are not responsible for any data loss or corruption.</p>
                 </div>
@@ -731,6 +731,7 @@
         let FILE_URL = null; // URL for previewing the input file
         let JOB_ID = null;
         let TIMER = null;
+        let startTime = 0; // NEW: Track start time for visual progress
 
         // --- NAVIGATION ---
         function switchView(viewId) {
@@ -743,7 +744,7 @@
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             const target = document.getElementById(`view-${viewId}`);
             if(target) target.classList.add('active');
-
+            
             // Hide global result if switching tabs
             document.getElementById('state-result').style.display = 'none';
 
@@ -771,7 +772,7 @@
                  document.getElementById(`state-${stateSuffix}-up`).style.display = 'block';
              }
         }
-
+        
         function moveSlider(val) {
             const afterImg = document.getElementById('comp-after');
             // Clip the top image from the right side based on slider value
@@ -785,7 +786,7 @@
             // Hide configs
             document.getElementById('state-config-conv').style.display = 'none';
             document.getElementById('state-config-up').style.display = 'none';
-
+            
             const res = document.getElementById('state-result');
             res.style.display = 'block';
             res.style.opacity = '0';
@@ -812,7 +813,10 @@
 
         function populateSelect() {
             const sel = document.getElementById('format-select');
-            sel.innerHTML = CONVERSIONS.map(c =>
+            // Filter out 'ai_upscale' from standard conversions
+            const conversionOptions = CONVERSIONS.filter(c => c.key !== 'ai_upscale');
+
+            sel.innerHTML = conversionOptions.map(c =>
                 `<option value="${c.key}" data-quality="${c.supports_quality}">${c.name}</option>`
             ).join('');
 
@@ -826,13 +830,13 @@
                     accQ.style.display = 'none';
                 }
             });
-            sel.dispatchEvent(new Event('change'));
+            sel.dispatchEvent(new Event('change')); 
         }
 
         function setupEvents() {
             // Converter Logic
             setupDropzone('dropzone-conv', 'file-input-conv', 'conv');
-
+            
             // Upscaler Logic
             setupDropzone('dropzone-up', 'file-input-up', 'up');
 
@@ -865,7 +869,7 @@
             if(!f || !f.type.startsWith('image/')) return alert("Image files only, please.");
             FILE = f;
             FILE_URL = URL.createObjectURL(f); // Create local preview URL
-
+            
             const sizeStr = (f.size / (1024*1024)).toFixed(2) + " MB";
             if(mode === 'conv') {
                 document.getElementById('file-name-conv').textContent = f.name;
@@ -892,6 +896,7 @@
 
         async function startJob(mode) {
             triggerResultView(); // Show shared result view
+            startTime = Date.now(); // NEW: Start time tracking
 
             const fd = new FormData();
             fd.append('file', FILE);
@@ -934,23 +939,46 @@
 
                 const bar = document.getElementById('progress-bar');
                 const txt = document.getElementById('status-text');
+                const head = document.getElementById('status-head');
 
                 if(res.status === 'running' || res.status === 'queued') {
                     // Make progress move a bit even if backend is stuck (UX)
-                    const currentW = parseFloat(bar.style.width) || 0;
-                    const visualProgress = Math.max(currentW, res.progress);
-                    bar.style.width = visualProgress + "%";
-
+                    let currentW = parseFloat(bar.style.width) || 0;
+                    let visualProgress = Math.max(currentW, res.progress); 
+                    
                     if(mode === 'upscale') {
-                         txt.textContent = res.status === 'queued' ? "Waiting for AI..." : "AI is Enhancing (this may take 20s)...";
-                    } else {
-                         txt.textContent = res.status === 'queued' ? "Waiting in queue..." : "Processing pixels...";
+                        // Max out the visual progress bar at 90% during AI processing
+                        const maxVisualProgress = 90;
+                        
+                        if(visualProgress < maxVisualProgress) {
+                             // Smoothly animate progress from client-side start time
+                            const elapsedSeconds = (Date.now() - startTime) / 1000;
+                            // Set a minimum visible progress for UX
+                            let timeBasedProgress = Math.min(maxVisualProgress, 10 + (elapsedSeconds * 2.5)); 
+                            visualProgress = Math.max(visualProgress, timeBasedProgress);
+                        } else {
+                            visualProgress = maxVisualProgress;
+                        }
+
+                        head.textContent = "AI Image Enhancement in Progress...";
+                        if (res.status === 'queued') {
+                             txt.textContent = "Waiting for an available AI worker (Low queue priority)...";
+                        } else if (res.progress >= 70) {
+                             txt.textContent = "AI Enhancement complete. Finalizing output file...";
+                        } else {
+                             txt.textContent = "AI is Enhancing Details (This may take 10-30 seconds)...";
+                        }
+                    } else { // Conversion mode
+                        head.textContent = "Processing Image Conversion...";
+                        txt.textContent = res.status === 'queued' ? "Waiting in queue..." : "Processing pixels...";
                     }
+                    
+                    bar.style.width = visualProgress + "%";
                 } else if (res.status === 'completed') {
                     clearInterval(TIMER);
                     bar.style.width = "100%";
                     document.getElementById('status-head').textContent = "Success!";
-                    txt.textContent = "Image processing complete.";
+                    txt.textContent = "Image processing complete. Download below.";
 
                     const acts = document.getElementById('final-actions');
                     acts.style.display = 'block';
@@ -964,7 +992,7 @@
                         // Setup Comparison Slider
                         document.getElementById('compare-wrapper').style.display = 'block';
                         document.getElementById('preview-area').style.display = 'none';
-
+                        
                         document.getElementById('comp-before').src = FILE_URL; // Local preview
                         document.getElementById('comp-after').src = res.download_url; // Result from server
                         // Reset slider
@@ -980,10 +1008,20 @@
 
                 } else if (res.status === 'failed') {
                     clearInterval(TIMER);
-                    alert("Failed: " + res.log);
-                    window.location.reload();
+                    head.textContent = "Processing Failed!";
+                    txt.textContent = `Error: ${res.log || "Unknown processing error."}`;
+                    bar.style.width = "100%";
+                    bar.style.backgroundColor = 'var(--error)';
+                    // Provide a restart button immediately
+                    document.getElementById('final-actions').style.display = 'block';
+                    document.getElementById('final-actions').innerHTML = `<button class="btn btn-primary" onclick="window.location.reload()">Try Again</button>`;
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) { 
+                console.error(e);
+                clearInterval(TIMER);
+                head.textContent = "Connection Error!";
+                txt.textContent = `Could not communicate with the server. Please try again.`;
+            }
         }
 
         // Start

@@ -1,4 +1,4 @@
-# app.py - Ultra Image Convert Backend (Robust & Thread-Safe)
+# app.py - Ultra Image Convert Backend (Secured and Streamlined)
 
 import os
 import secrets
@@ -9,14 +9,24 @@ from logging.handlers import RotatingFileHandler
 import threading
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
+import io
+from PIL import Image, ImageOps, ImageEnhance, UnidentifiedImageError, ImageSequence  # Added necessary PIL imports
+from PIL.Image import Resampling  # Import Resampling filter for high quality resize
 
 from flask import Flask, request, jsonify, send_file, url_for, render_template
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-from PIL import Image, ImageOps, ImageEnhance  # Added ImageEnhance
 
+# --- Attempt to import python-magic for better MIME security ---
+try:
+    import magic
+
+    HAS_MAGIC = True
+except ImportError:
+    HAS_MAGIC = False
+    logging.warning("python-magic not installed. Using fallback validation.")
 
 # 0. Configuration & Initialization
 
@@ -62,7 +72,6 @@ CONVERSION_MAP = {
     'pillow_ico': {'name': 'ICO (Favicon)', 'ext': 'ico', 'format': 'ICO', 'supports_quality': False,
                    'mime': 'image/x-icon'},
 }
-
 
 # 1. Flask App Factory & Extensions
 
@@ -116,75 +125,76 @@ def custom_secure_filename(filename):
 def get_file_magic_mime(file_stream):
     """Safely attempts to detect MIME type."""
     file_stream.seek(0)
-    header = file_stream.read(2048)
+    header = file_stream.read(4096)
     file_stream.seek(0)
+
+    if HAS_MAGIC:
+        try:
+            return magic.from_buffer(header, mime=True)
+        except Exception as e:
+            logging.error(f"python-magic detection error: {e}")
+            return 'application/octet-stream'
+    else:
+        # Fallback validation
+        return 'application/octet-stream'
+
+
+def cleanup_temp_file(filepath):
+    """Deletes a file if it exists."""
     try:
-        from magic import from_buffer
-        return from_buffer(header, mime=True)
-    except ImportError:
-        logging.warning("python-magic not installed, using fallback validation.")
-        return 'application/octet-stream'
+        if os.path.exists(filepath):
+            os.remove(filepath)
     except Exception as e:
-        logging.error(f"Mime detection error: {e}")
-        return 'application/octet-stream'
+        app.logger.error(f"Failed to remove temp file {filepath}: {e}")
 
 
-# 2. Image Processing Worker (Updated)
-
+# 2. Image Processing Worker
 
 def run_image_job(job_id):
-    """Worker thread with Opacity & Quality logic."""
+    """Worker thread with Resizing, Opacity & Quality logic."""
     with JOB_LOCK:
         job = JOB_QUEUE.get(job_id)
 
     if not job: return
 
-    with JOB_LOCK:
-        job['status'] = 'running'
-        job['progress'] = 10
-
     input_filepath = job['input_filepath']
-    conversion_key = job['conversion_key']
-    settings = job['settings']
-
-    details = CONVERSION_MAP.get(conversion_key)
-    if not details:
-        with JOB_LOCK:
-            job['status'] = 'failed'
-            job['log'] = "Invalid conversion key."
-        return
-
-    target_format = details['format']
-    output_ext = details['ext']
-
-    base_name = os.path.splitext(os.path.basename(job['input_original_filename']))[0]
-    output_filename = f"processed_{base_name}_{secrets.token_urlsafe(4)}.{output_ext}"
-    output_filepath = os.path.join(OUTPUT_FOLDER, output_filename)
-
-    with JOB_LOCK:
-        job['output_filepath'] = output_filepath
 
     try:
         with JOB_LOCK:
-            job['progress'] = 20
-        img = Image.open(input_filepath)
+            job['status'] = 'running'
+            job['progress'] = 10
 
-        # Handle animations (seek 0 unless GIF/WEBP target)
+        conversion_key = job['conversion_key']
+        settings = job['settings']
+        details = CONVERSION_MAP.get(conversion_key)
+
+        target_format = details['format']
+        output_ext = details['ext']
+
+        base_name = os.path.splitext(os.path.basename(job['input_original_filename']))[0]
+        output_filename = f"processed_{base_name}_{secrets.token_urlsafe(4)}.{output_ext}"
+        output_filepath = os.path.join(OUTPUT_FOLDER, output_filename)
+
+        with JOB_LOCK:
+            job['output_filepath'] = output_filepath
+            job['progress'] = 20
+
+        # --- Image Opening and Structural Validation (Pre-Check) ---
+        img = Image.open(input_filepath)
+        img.load()
+
         if getattr(img, "is_animated", False) and target_format not in ['GIF', 'WEBP']:
             img.seek(0)
 
+        resample_filter = Resampling.LANCZOS
 
-        # A. RESIZING (Done first to save processing time on pixels)
-
+        # A. RESIZING
         req_width = settings.get('width')
         req_height = settings.get('height')
         maintain_ar = settings.get('maintain_ar')
 
-        try:
-            w_int = int(req_width) if req_width else 0
-            h_int = int(req_height) if req_height else 0
-        except ValueError:
-            w_int, h_int = 0, 0
+        w_int = int(req_width) if req_width and str(req_width).isdigit() else 0
+        h_int = int(req_height) if req_height and str(req_height).isdigit() else 0
 
         if w_int > 0 or h_int > 0:
             current_w, current_h = img.size
@@ -192,54 +202,34 @@ def run_image_job(job_id):
             final_h = h_int if h_int > 0 else current_h
 
             if maintain_ar:
-                img = ImageOps.contain(img, (final_w, final_h), method=Image.Resampling.LANCZOS)
+                # Resize image to fit inside the bounding box, maintaining AR
+                img = ImageOps.contain(img, (final_w, final_h), method=resample_filter)
             else:
-                img = img.resize((final_w, final_h), resample=Image.Resampling.LANCZOS)
+                # Force resize/stretch
+                img = img.resize((final_w, final_h), resample=resample_filter)
 
         with JOB_LOCK:
             job['progress'] = 40
 
-
-        # B. OPACITY ADJUSTMENT (New Feature)
-
-        try:
-            opacity_val = int(settings.get('opacity', 100))
-        except (ValueError, TypeError):
-            opacity_val = 100
-
-        # Only apply if user requested < 100% opacity
+        # B. OPACITY ADJUSTMENT
+        opacity_val = int(settings.get('opacity', 100))
         if 0 <= opacity_val < 100:
-            # 1. Ensure we are in RGBA mode to manipulate alpha
             if img.mode != 'RGBA':
                 img = img.convert('RGBA')
 
-            # 2. Get the Alpha channel
             alpha = img.split()[3]
-
-            # 3. Apply the factor (opacity / 100)
-            # This multiplies every pixel's alpha by the opacity percentage
             factor = opacity_val / 100.0
             alpha = alpha.point(lambda p: int(p * factor))
-
-            # 4. Put the modified alpha back
             img.putalpha(alpha)
 
         with JOB_LOCK:
             job['progress'] = 60
 
-
         # C. COLOR MODE & FORMAT HANDLING
 
-        # If target doesn't support transparency (JPEG, BMP), we must composite
-        # the (potentially translucent) image over a background color (White).
-
         if target_format in ['JPEG', 'BMP']:
-            # Check if we have transparency to handle
             if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
-                # Create white background
                 background = Image.new('RGB', img.size, (255, 255, 255))
-                # Paste image using its own alpha channel as mask
-                # If we just reduced opacity in step B, this will make the image look "faded" against white
                 if img.mode != 'RGBA': img = img.convert('RGBA')
                 background.paste(img, mask=img.split()[3])
                 img = background
@@ -253,23 +243,16 @@ def run_image_job(job_id):
             job['progress'] = 80
 
         # D. SAVING & QUALITY
-
         save_kwargs = {}
-
-        # Quality logic (Compression)
         if details['supports_quality']:
-            try:
-                q = int(settings.get('quality', 90))
-                # PIL quality is 1-95 usually, strictly 1-100 allowed
-                save_kwargs['quality'] = max(1, min(100, q))
-            except (ValueError, TypeError):
-                save_kwargs['quality'] = 90
+            q = int(settings.get('quality', 90))
+            save_kwargs['quality'] = max(1, min(100, q))
 
-        # GIF Optimization
-        if target_format == 'GIF':
+        if target_format == 'GIF' and getattr(img, "is_animated", False):
             save_kwargs['optimize'] = True
-            if getattr(img, "is_animated", False):
-                save_kwargs['save_all'] = True
+            frames = [frame.copy() for frame in ImageSequence.Iterator(img)]
+            save_kwargs['save_all'] = True
+            save_kwargs['append_images'] = frames[1:]
 
         img.save(output_filepath, format=target_format, **save_kwargs)
         img.close()
@@ -280,21 +263,23 @@ def run_image_job(job_id):
                 job['status'] = 'completed'
                 job['progress'] = 100
                 job['end_time'] = datetime.now(timezone.utc).isoformat()
+                job['log'] = f"Conversion to {target_format} successful."
         else:
-            raise Exception("File save failed (empty file).")
+            raise Exception("File save failed (empty file or write error).")
 
+    except UnidentifiedImageError:
+        app.logger.error(f"Job {job_id} failed: UnidentifiedImageError - Corrupt file?")
+        with JOB_LOCK:
+            job['status'] = 'failed'
+            job['log'] = "The file is not a valid image or is corrupt."
     except Exception as e:
         app.logger.error(f"Job {job_id} failed: {repr(e)}")
         with JOB_LOCK:
             job['status'] = 'failed'
-            job['log'] = "Error processing image. The file might be corrupt."
+            job['log'] = f"Error processing image: {str(e)[:100]}."
     finally:
-        if os.path.exists(input_filepath):
-            try:
-                os.remove(input_filepath)
-            except OSError:
-                pass
-
+        # Crucial: delete the original uploaded file
+        cleanup_temp_file(input_filepath)
 
 
 # 3. Cleanup Task
@@ -334,16 +319,16 @@ def start_cleanup_scheduler():
     t.start()
 
 
-
 # 4. API Endpoints
 
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
     limit = int(app.config["MAX_CONTENT_LENGTH"] / (1024 * 1024))
+    conversions_list = [{'key': k, **v} for k, v in CONVERSION_MAP.items()]
     return jsonify({
         "max_upload_mb": limit,
-        "conversions": [{'key': k, **v} for k, v in CONVERSION_MAP.items()]
+        "conversions": conversions_list
     })
 
 
@@ -366,21 +351,48 @@ def create_job():
     if conversion_key not in CONVERSION_MAP:
         return jsonify({"msg": "Unknown format"}), 400
 
-    mime_type = get_file_magic_mime(file.stream)
-    if not mime_type.startswith('image/') and mime_type != 'application/octet-stream':
+    # 1. SECURITY: Read file stream into memory for initial inspection
+    file_stream = io.BytesIO(file.read())
+    file.stream.seek(0)
+
+    # 2. SECURITY: MIME check (using python-magic if available)
+    mime_type = get_file_magic_mime(file_stream)
+    is_valid_image_mime = mime_type.startswith('image/')
+
+    # Block common non-image file types
+    if not is_valid_image_mime and mime_type in ['application/pdf', 'application/zip', 'text/plain']:
+        return jsonify({"msg": f"File type {mime_type} is explicitly blocked."}), 403
+
+    # Block unknown MIME types that aren't the generic octet stream (relying on PIL later)
+    if not is_valid_image_mime and mime_type != 'application/octet-stream':
         return jsonify({"msg": f"Invalid file type: {mime_type}"}), 403
 
+    # 3. Save file temporarily
     job_uuid = secrets.token_urlsafe(12)
-    input_filename = custom_secure_filename(file.filename)
-    input_filepath = os.path.join(TEMP_DIR, input_filename)
+    input_original_filename = custom_secure_filename(file.filename)
+    input_filepath = os.path.join(TEMP_DIR, f"{job_uuid}_{input_original_filename}")
 
     try:
-        file.stream.seek(0)
         file.save(input_filepath)
     except Exception as e:
-        app.logger.error(f"Save failed: {e}")
+        app.logger.error(f"File save failed: {e}")
         return jsonify({"msg": "Internal save error"}), 500
 
+    # 4. SECURITY: PIL Structural Verification (after saving)
+    try:
+        img = Image.open(input_filepath)
+        img.verify()
+        img.close()
+    except UnidentifiedImageError:
+        app.logger.warning(f"Security Warning: File verification failed (Not recognized).")
+        cleanup_temp_file(input_filepath)
+        return jsonify({"msg": "File is not a valid image format."}), 415
+    except Exception as e:
+        app.logger.error(f"PIL verification failed: {e}")
+        cleanup_temp_file(input_filepath)
+        return jsonify({"msg": f"Image structural error: {str(e)[:100]}"}), 415
+
+    # 5. Create Job and Queue
     with JOB_LOCK:
         JOB_QUEUE[job_uuid] = {
             'job_id': job_uuid,
@@ -388,7 +400,7 @@ def create_job():
             'input_filepath': input_filepath,
             'output_filepath': None,
             'conversion_key': conversion_key,
-            'settings': settings,  # settings now includes 'opacity' and 'quality'
+            'settings': settings,
             'status': 'queued',
             'progress': 0,
             'start_time': datetime.now(timezone.utc).isoformat(),
@@ -406,6 +418,7 @@ def get_job_status(job_uuid):
     job_data = job.copy()
     if job_data['status'] == 'completed' and job_data['output_filepath']:
         job_data['download_url'] = url_for('download_file', job_uuid=job_uuid, _external=True)
+        # Do NOT expose server file paths to the client
         job_data.pop('input_filepath', None)
         job_data.pop('output_filepath', None)
     return jsonify(job_data), 200
@@ -432,4 +445,4 @@ def download_file(job_uuid):
 
 if __name__ == '__main__':
     start_cleanup_scheduler()
-    app.run(debug=True, port=5000, threaded=True)
+    #app.run(debug=os.getenv('FLASK_DEBUG', 'False') == 'True', host='0.0.0.0', port=5000)

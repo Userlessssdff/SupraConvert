@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UltraConvert | Image Tools</title>
+    <title>UltraConvert | Secure Local Image Processor</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
@@ -301,65 +301,20 @@
         }
         @keyframes stripe-move { from { background-position: 1rem 0; } to { background-position: 0 0; } }
 
-        /* --- Comparison Slider Styles --- */
-        .comp-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            height: 400px;
-            margin: 2rem auto;
-            border-radius: 16px;
-            overflow: hidden;
+        /* --- Preview Area --- */
+        .preview-box {
+            text-align: center;
+            margin-top: 2rem;
+            animation: popIn 0.5s var(--ease-out-back);
+        }
+        .preview-img {
+            max-width: 100%; height: auto;
+            max-height: 400px;
+            border-radius: 12px;
             box-shadow: var(--shadow-lg);
             border: 4px solid #fff;
-            background: #eee;
         }
-        .comp-img {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: contain;
-            object-position: left;
-        }
-        .comp-img-after {
-            clip-path: inset(0 50% 0 0);
-        }
-        .comp-slider {
-            position: absolute;
-            -webkit-appearance: none;
-            width: 100%; height: 100%;
-            background: transparent;
-            z-index: 10;
-            top: 0; left: 0;
-            margin: 0;
-            outline: none;
-            cursor: col-resize;
-        }
-        .comp-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 4px; height: 400px;
-            background: #fff;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            cursor: col-resize;
-        }
-        .comp-slider::-moz-range-thumb {
-            width: 4px; height: 400px;
-            background: #fff;
-            border: none;
-            cursor: col-resize;
-        }
-        .comp-label {
-            position: absolute;
-            bottom: 10px;
-            padding: 4px 10px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            pointer-events: none;
-            z-index: 5;
-        }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
 
         /* --- Footer --- */
         footer {
@@ -376,8 +331,6 @@
             .app-header { flex-direction: column; gap: 1rem; padding: 1rem; }
             main { padding: 1.5rem; }
             h1 { font-size: 2rem; }
-            .nav-pills { flex-wrap: wrap; justify-content: center; }
-            .comp-container { height: 300px; }
         }
     </style>
 </head>
@@ -390,9 +343,8 @@
             </div>
             <nav class="nav-pills">
                 <div class="nav-item active" onclick="switchView('home')" id="nav-home">Converter</div>
-                <div class="nav-item" onclick="switchView('upscale')" id="nav-upscale">Upscale ✨</div>
                 <div class="nav-item" onclick="switchView('policy')" id="nav-policy">Policy</div>
-                <div class="nav-item" onclick="switchView('terms')" id="nav-terms">Terms</div>
+                <div class="nav-item" onclick="switchView('terms')" id="nav-terms">Terms of Use</div>
                 <div class="nav-item" onclick="switchView('about')" id="nav-about">About</div>
             </nav>
         </header>
@@ -400,7 +352,7 @@
         <main>
             <section id="view-home" class="view-section active">
 
-                <div id="state-upload-conv">
+                <div id="state-upload">
                     <div style="text-align: center; margin-bottom: 3rem;">
                         <h1>Make Images Better.</h1>
                         <p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
@@ -408,8 +360,8 @@
                         </p>
                     </div>
 
-                    <input type="file" id="file-input-conv" hidden accept="image/*">
-                    <div id="dropzone-conv" class="dropzone-container">
+                    <input type="file" id="file-input" hidden accept="image/*">
+                    <div id="dropzone" class="dropzone-container">
                         <span class="drop-icon">🖼️</span>
                         <h3>Drag & Drop your Image</h3>
                         <p>Supports JPG, PNG, WebP, GIF, TIFF, BMP, ICO</p>
@@ -417,16 +369,16 @@
                     </div>
                 </div>
 
-                <div id="state-config-conv" class="hidden" style="display: none;">
+                <div id="state-config" class="hidden" style="display: none;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; background: #fff; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <div style="font-size: 2rem;">📄</div>
                             <div>
-                                <div style="font-weight: 700;" id="file-name-conv">image.png</div>
-                                <div style="font-size: 0.9rem; color: var(--text-muted);" id="file-size-conv">2.4 MB</div>
+                                <div style="font-weight: 700;" id="file-name">image.png</div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted);" id="file-size">2.4 MB</div>
                             </div>
                         </div>
-                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="resetApp('conv')">Change File</button>
+                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="resetApp()">Change File</button>
                     </div>
 
                     <div style="max-width: 600px; margin: 0 auto;">
@@ -493,7 +445,7 @@
                             </div>
                         </div>
 
-                        <button onclick="startJob('convert')" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 1.2rem;">
+                        <button id="btn-process" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 1.2rem;">
                             🚀 Start Conversion
                         </button>
                     </div>
@@ -508,24 +460,11 @@
                     <p id="status-text">Uploading to secure environment...</p>
 
                     <div id="final-actions" style="display: none;">
-                        <div id="compare-wrapper" style="display:none;">
-                            <div class="comp-container">
-                                <img id="comp-before" class="comp-img" src="" alt="Before">
-                                <div class="comp-label" style="left: 10px;">Before</div>
-
-                                <img id="comp-after" class="comp-img comp-img-after" src="" alt="After">
-                                <div class="comp-label" style="right: 10px;">After</div>
-
-                                <input type="range" min="0" max="100" value="50" class="comp-slider" id="comp-slider-input" oninput="moveSlider(this.value)">
-                            </div>
-                            <p style="font-size: 0.9rem; color: var(--text-muted);">Slide to compare</p>
-                        </div>
-
-                        <div class="preview-box" id="preview-area" style="display:none;"></div>
+                        <div class="preview-box" id="preview-area"></div>
 
                         <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap;">
                             <a id="btn-download" class="btn btn-primary" href="#" target="_blank">⬇️ Download Image</a>
-                            <button class="btn btn-secondary" onclick="window.location.reload()">🔄 Start Over</button>
+                            <button class="btn btn-secondary" onclick="resetApp()">🔄 Convert Another</button>
                         </div>
                         <p style="font-size: 0.8rem; color: var(--success); margin-top: 1rem;">
                             ✅ File is ready.
@@ -535,200 +474,284 @@
 
             </section>
 
-            <section id="view-upscale" class="view-section">
-                <div id="state-upload-up">
-                    <div style="text-align: center; margin-bottom: 3rem;">
-                        <h1>AI Image Upscaling</h1>
-                        <p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
-                            Enhance resolution and details using state-of-the-art AI models via Hugging Face.
-                        </p>
-                    </div>
-
-                    <input type="file" id="file-input-up" hidden accept="image/*">
-                    <div id="dropzone-up" class="dropzone-container" style="border-color: #8b5cf6; background: linear-gradient(to bottom, #f5f3ff, #f1f5f9);">
-                        <span class="drop-icon">✨</span>
-                        <h3>Drag & Drop to Upscale</h3>
-                        <p>Automatically enhances quality and resolution.</p>
-                        <button class="btn btn-secondary" style="margin-top: 1rem;">Browse Files</button>
-                    </div>
-                </div>
-
-                <div id="state-config-up" class="hidden" style="display: none;">
-                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; background: #fff; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <div style="font-size: 2rem;">✨</div>
-                            <div>
-                                <div style="font-weight: 700;" id="file-name-up">image.png</div>
-                                <div style="font-size: 0.9rem; color: var(--text-muted);" id="file-size-up">2.4 MB</div>
-                            </div>
-                        </div>
-                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="resetApp('up')">Change File</button>
-                    </div>
-
-                    <div style="max-width: 500px; margin: 0 auto; text-align: center;">
-                         <label style="font-weight: 700; display: block; margin-bottom: 0.5rem; text-align: left;">Target Resolution</label>
-                         <select id="upscale-res" class="form-control">
-                             <option value="original">2x Enlarge (AI Native)</option>
-                             <option value="1080p">1080p (Full HD)</option>
-                             <option value="2k">2K (QHD)</option>
-                             <option value="4k">4K (UHD)</option>
-                         </select>
-
-                         <p style="font-size:0.9rem; color: var(--text-muted; margin-top: 1rem;">
-                             Using <strong>Swin2SR</strong> model. Large files may take ~20 seconds.
-                         </p>
-                         <button onclick="startJob('upscale')" class="btn btn-primary" style="background: #8b5cf6; width: 100%; margin-top: 1rem; padding: 1.2rem;">
-                            ✨ Start Magic Upscale
-                        </button>
-                    </div>
-                </div>
-            </section>
-
             <section id="view-policy" class="view-section">
                 <div style="text-align: center; margin-bottom: 3rem;">
                     <h1>Privacy Policy</h1>
-                    <p>Last Updated: <script>document.write(new Date().toLocaleDateString())</script></p>
+                    <p>Last Updated: [09/12/2025]</p>
                 </div>
 
                 <div class="info-card" style="max-width: 900px; margin: 0 auto;">
+                    <p>At UltraConvert, your privacy is a top priority. This Privacy Policy explains in detail how we collect, use, store, and protect your information when you visit or use our website, services, and tools (collectively, the “Services”). By using our Services, you agree to the practices described in this policy.</p>
+
                     <h3>1. Information We Collect</h3>
-                    <p>We may collect the following types of data:</p>
+                    <p>We collect information to provide a safe, efficient, and personalized experience. This includes:</p>
 
-                    <h4>A. Automatically Collected Data</h4>
-                    <p>When you visit our site, we automatically collect:</p>
+                    <h4>1.1 Personal Information</h4>
                     <ul>
-                        <li>IP address</li>
+                        <li>Email addresses or contact details (only if you submit through contact forms or newsletters).</li>
+                        <li>Uploaded files (images or documents you submit for conversion).</li>
+                        <li>Files are processed temporarily and deleted automatically after conversion.</li>
+                    </ul>
+
+                    <h4>1.2 Automatically Collected Data</h4>
+                    <p>We may automatically collect certain information when you access our Services:</p>
+                    <ul>
+                        <li>IP addresses</li>
                         <li>Browser type and version</li>
-                        <li>Device information</li>
-                        <li>Pages visited and time spent</li>
-                        <li>Cookies and similar tracking technologies</li>
+                        <li>Operating system and device type</li>
+                        <li>Pages visited, time spent, and navigation patterns</li>
+                        <li>Referring website URLs</li>
                     </ul>
 
-                    <h4>B. Information You Provide Voluntarily</h4>
+                    <h4>1.3 Cookies and Similar Technologies</h4>
+                    <p>We use cookies, local storage, and other tracking technologies to:</p>
                     <ul>
-                        <li>Form submissions (e.g., contact form)</li>
-                        <li>Email address (if you subscribe or contact us)</li>
-                        <li>Any content you upload or send through the site</li>
+                        <li>Improve website performance</li>
+                        <li>Remember user preferences</li>
+                        <li>Enable analytics and ads</li>
                     </ul>
-
-                    <h3>2. Use of Cookies</h3>
-                    <p>We use cookies for:</p>
+                    <p><strong>Types of cookies:</strong></p>
                     <ul>
-                        <li>Improving website performance</li>
-                        <li>Understanding user behavior</li>
-                        <li>Remembering user preferences</li>
-                        <li>Serving personalized ads</li>
+                        <li><strong>Essential cookies:</strong> Required for core site functionality (file uploads, settings).</li>
+                        <li><strong>Performance cookies:</strong> Track user behavior anonymously to optimize site speed and experience.</li>
+                        <li><strong>Advertising cookies:</strong> Serve personalized ads through Google AdSense or other networks.</li>
                     </ul>
 
-                    <h4>Google AdSense Cookies</h4>
-                    <p>We use Google AdSense, which may use:</p>
+                    <h3>2. How We Use Your Information</h3>
+                    <p>Your data may be used for the following purposes:</p>
                     <ul>
-                        <li>Cookies</li>
-                        <li>Web beacons</li>
-                        <li>DART cookies (for personalized advertising)</li>
+                        <li><strong>Service Operation:</strong> To process uploaded files and deliver conversion results.</li>
+                        <li><strong>User Experience:</strong> To improve site functionality, interface, and performance.</li>
+                        <li><strong>Analytics:</strong> To analyze trends, usage patterns, and performance metrics.</li>
+                        <li><strong>Advertising:</strong> To serve personalized ads via Google AdSense or third-party networks.</li>
+                        <li><strong>Security:</strong> To detect fraud, malware, abuse, and unauthorized activity.</li>
+                        <li><strong>Communication:</strong> To respond to inquiries, notifications, or support requests.</li>
                     </ul>
-                    <p>Google may use your data to deliver ads based on your previous visits to our website or others and to personalize ad experiences.</p>
-                    <p>Users can opt out of personalized advertising by visiting: <a href="https://www.google.com/settings/ads" target="_blank" style="color:var(--primary); font-weight:700;">Google Ad Settings</a></p>
 
-                    <h3>3. How We Use Your Information</h3>
-                    <p>We use collected data for:</p>
+                    <h3>3. File Handling and Storage</h3>
                     <ul>
-                        <li>Improving website functionality and performance</li>
-                        <li>Personalizing user experience</li>
-                        <li>Analytics and security</li>
-                        <li>Showing relevant ads (via Google AdSense)</li>
-                        <li>Responding to your inquiries</li>
+                        <li>Uploaded files are stored temporarily on our servers only for the duration of processing.</li>
+                        <li>Files are automatically deleted after conversion.</li>
+                        <li>We do not share or sell uploaded files to third parties.</li>
+                        <li>Sensitive images or personal data should not be uploaded if you do not consent to temporary processing.</li>
                     </ul>
 
-                    <h3>4. Third-Party Advertising and Services</h3>
-                    <p>We may share anonymized data with:</p>
+                    <h3>4. Third-Party Services</h3>
+                    <p>We may integrate third-party services for analytics, performance, security, or advertising. These may collect information according to their own privacy policies. Examples include:</p>
                     <ul>
-                        <li>Google AdSense</li>
-                        <li>Google Analytics</li>
-                        <li>Advertising networks</li>
-                        <li>Security or analytics partners</li>
+                        <li><strong>Google AdSense:</strong> For ad serving and behavioral tracking.</li>
+                        <li><strong>Google Analytics:</strong> For anonymized site usage statistics.</li>
+                        <li><strong>Cloud or Virus Scanning APIs:</strong> For file validation and security.</li>
                     </ul>
-                    <p>These parties follow their own privacy policies. You can review Google’s policies here: <a href="https://policies.google.com/technologies/ads" target="_blank" style="color:var(--primary); font-weight:700;">Google Ads Privacy</a></p>
+                    <p><em>Note: We do not control third-party data collection. Please review their privacy policies separately.</em></p>
 
-                    <h3>5. Data Protection & Security</h3>
-                    <p>We take reasonable steps to protect your information by:</p>
+                    <h3>5. Advertising and Tracking</h3>
                     <ul>
-                        <li>Using encrypted connections (HTTPS)</li>
-                        <li>Limiting access to data</li>
-                        <li>Preventing unauthorized access</li>
+                        <li>Ads may use cookies and tracking to display relevant content.</li>
+                        <li>You may choose not to click on ads.</li>
+                        <li>Ad networks may collect anonymous data about your interactions.</li>
                     </ul>
-                    <p>However, no method is 100% secure, and we cannot guarantee absolute protection.</p>
 
-                    <h3>6. Children's Privacy</h3>
-                    <p>Our website is not intended for children under 13. We do not knowingly collect data from children.</p>
-
-                    <h3>7. Links to External Websites</h3>
-                    <p>Our website may contain links to third-party websites. We are not responsible for their privacy policies or content.</p>
-
-                    <h3>8. Your Rights</h3>
-                    <p>You may request:</p>
+                    <h3>6. Data Security</h3>
+                    <p>We implement industry-standard security measures to protect your data:</p>
                     <ul>
-                        <li>Access to your data</li>
-                        <li>Deletion of your data</li>
-                        <li>Correction of inaccurate data</li>
-                        <li>Opt-out of personalized ads</li>
+                        <li>HTTPS / SSL encryption for all communications.</li>
+                        <li>Firewalls and intrusion detection systems.</li>
+                        <li>Regular security audits.</li>
+                        <li>Automatic deletion of uploaded files after processing.</li>
+                        <li>Access to personal information is restricted to authorized personnel only.</li>
                     </ul>
-                    <p>To do so, contact us at: <strong>[Your Contact Email]</strong></p>
+                    <p><em>Disclaimer: While we take all reasonable measures, no method of transmission or storage is 100% secure.</em></p>
 
-                    <h3>9. Changes to This Privacy Policy</h3>
-                    <p>We may update this policy from time to time. Any changes will be posted on this page with an updated date.</p>
+                    <h3>7. Children’s Privacy</h3>
+                    <ul>
+                        <li>Our Services are not intended for children under 13.</li>
+                        <li>We do not knowingly collect personal information from children.</li>
+                        <li>If we discover that personal data from a child has been collected, we will delete it immediately.</li>
+                    </ul>
 
-                    <h3>10. Contact Us</h3>
-                    <p>If you have any questions about this Privacy Policy, please contact us at:</p>
-                    <p>📧 <strong>[Your Email]</strong></p>
+                    <h3>8. User Rights</h3>
+                    <p>Depending on your jurisdiction, you may have the following rights:</p>
+                    <ul>
+                        <li><strong>Access & Portability:</strong> Request a copy of the personal data we hold about you.</li>
+                        <li><strong>Correction:</strong> Request corrections to inaccurate or incomplete information.</li>
+                        <li><strong>Deletion:</strong> Request deletion of your personal data, where applicable.</li>
+                        <li><strong>Objection / Restriction:</strong> Limit or object to certain processing of your data.</li>
+                        <li><strong>Withdrawal of Consent:</strong> Revoke consent where processing is based on consent.</li>
+                    </ul>
+                    <p>To exercise your rights: Contact us via our email or contact form. We will respond within a reasonable time frame.</p>
+
+                    <h3>9. Cookies and Opt-Out</h3>
+                    <ul>
+                        <li>You can disable cookies in your browser settings.</li>
+                        <li>Note: Disabling essential cookies may limit functionality.</li>
+                        <li>For behavioral advertising cookies, you may opt out through Google Ad Settings: <a href="https://www.google.com/settings/ads" target="_blank">https://www.google.com/settings/ads</a></li>
+                    </ul>
+
+                    <h3>10. Legal Compliance and Disclosure</h3>
+                    <p>We may disclose information if required to:</p>
+                    <ul>
+                        <li>Comply with applicable laws, regulations, or legal processes.</li>
+                        <li>Protect the safety, rights, or property of our users or third parties.</li>
+                        <li>Prevent fraud, malware, or security threats.</li>
+                    </ul>
+
+                    <h3>11. International Users</h3>
+                    <ul>
+                        <li>Our servers may be located outside your country.</li>
+                        <li>By using the Services, you consent to transfer, storage, and processing of your information internationally.</li>
+                        <li>We comply with data protection laws such as GDPR (Europe) and CCPA (California) where applicable.</li>
+                    </ul>
+
+                    <h3>12. Retention Period</h3>
+                    <ul>
+                        <li><strong>Uploaded files:</strong> deleted immediately after processing.</li>
+                        <li><strong>Analytics and logs:</strong> retained for up to 12 months for performance and security analysis.</li>
+                        <li><strong>Contact form submissions:</strong> retained until the inquiry is resolved, then anonymized.</li>
+                    </ul>
+
+                    <h3>13. Changes to This Privacy Policy</h3>
+                    <ul>
+                        <li>We may update this policy from time to time.</li>
+                        <li>The “Last Updated” date will be revised.</li>
+                        <li>Significant changes may also be communicated via website notification.</li>
+                    </ul>
+
+                    <h3>14. Contact Information</h3>
+                    <p>If you have any questions or concerns regarding this Privacy Policy, please contact us at:</p>
+                    <ul>
+                        <li><strong>Email:</strong> [your-email@example.com]</li>
+                    </ul>
                 </div>
             </section>
 
             <section id="view-terms" class="view-section">
-                 <div style="text-align: center; margin-bottom: 3rem;">
-                    <h1>Terms of Service</h1>
-                </div>
-                <div class="info-card" style="max-width: 900px; margin: 0 auto;">
-                    <h3>1. Acceptance</h3>
-                    <p>By using UltraConvert, you agree to these terms.</p>
-
-                    <h3>2. License to UltraConvert</h3>
-                    <p>You grant us a temporary license to process your files. We claim no ownership over your content.</p>
-
-                    <h3>3. Restrictions</h3>
-                    <p>You may not use this service to process illegal content or attempt to harm the service infrastructure.</p>
-
-                    <h3>4. Disclaimer</h3>
-                    <p>The service is provided "AS IS". We are not responsible for any data loss or corruption.</p>
-                </div>
-            </section>
-
-             <section id="view-about" class="view-section">
                 <div style="text-align: center; margin-bottom: 3rem;">
-                    <h1>About UltraConvert</h1>
+                    <h1>Terms of Service (ToS)</h1>
+                    <p>Effective Date: [09/12/2025]</p>
                 </div>
-                <div class="info-card" style="margin-bottom: 2rem;">
-                    <h3>Hybrid Architecture</h3>
-                    <p>UltraConvert combines local Python Pillow processing with powerful cloud AI.</p>
+
+                <div class="info-card" style="max-width: 900px; margin: 0 auto;">
+                    <p>Welcome to UltraConvert. By accessing or using our website and services (the "Services"), you agree to be bound by these Terms of Service ("Terms"). Please read them carefully. If you do not agree, you may not use the Services.</p>
+
+                    <h3>1. Acceptance of Terms</h3>
+                    <p>By clicking "I Agree" or otherwise using the Services, you confirm that you have read, understood, and agree to these Terms and our Privacy Policy. These Terms apply to all users, including visitors, registered users, and others who access the Service.</p>
+
+                    <h3>2. Use of Service</h3>
+                    <h4>2.1 Eligibility</h4>
+                    <p>You must be at least 13 years old to use the Services. If you are between 13 and 18, you must have permission from a parent or legal guardian.</p>
+
+                    <h4>2.2 Account Security</h4>
+                    <p>The Service is designed for anonymous, one-off conversions. If, in the future, accounts are introduced, you would be responsible for maintaining the confidentiality of your account credentials.</p>
+
+                    <h4>2.3 Prohibited Activities</h4>
+                    <p>You agree not to use the Service for any unlawful or prohibited purpose. Prohibited activities include, but are not limited to:</p>
                     <ul>
-                        <li><strong>Conversion:</strong> Runs locally on this server using Python Pillow. Fast and private.</li>
-                        <li><strong>Upscaling:</strong> Powered by the Hugging Face Inference API, utilizing advanced Super Resolution models (Swin2SR).</li>
+                        <li>Uploading illegal, harmful, threatening, defamatory, obscene, or otherwise objectionable content.</li>
+                        <li>Attempting to upload or transmit viruses, worms, or any other malicious code.</li>
+                        <li>Interfering with or disrupting the integrity or performance of the Service.</li>
+                        <li>Reverse-engineering, decompiling, or attempting to derive the source code of the Service.</li>
+                        <li>Using the Service to process files for automated commercial services without explicit written consent.</li>
+                        <li>Attempting to bypass rate limits or other security measures.</li>
+                    </ul>
+
+                    <h3>3. Intellectual Property Rights</h3>
+                    <h4>3.1 Your Content</h4>
+                    <p>You retain all ownership rights to the images and files you upload to the Service ("Your Content"). We claim no ownership over Your Content.</p>
+
+                    <h4>3.2 License to UltraConvert</h4>
+                    <p>By uploading Your Content, you grant UltraConvert a temporary, non-exclusive, royalty-free, worldwide license to use, reproduce, process, and store Your Content solely for the purpose of providing the conversion service requested by you. This license automatically terminates immediately upon the completion of the processing job and deletion of the file from our servers (as detailed in the Privacy Policy).</p>
+
+                    <h4>3.3 Service IP</h4>
+                    <p>All intellectual property rights in the Service itself, including the code, design, trademarks, and branding (excluding Your Content), are owned by or licensed to UltraConvert. You may not use any of our intellectual property without prior written permission.</p>
+
+                    <h3>4. File Processing and Storage Disclaimer</h3>
+                    <h4>4.1 Service Limitations</h4>
+                    <p>We rely on third-party libraries (like Pillow) for image processing. We do not guarantee that every file conversion will be successful or that the output will be exactly as expected, especially for complex or corrupt files.</p>
+
+                    <h4>4.2 Temporary Nature</h4>
+                    <p>Uploaded files are temporary and are automatically deleted shortly after processing. You are solely responsible for keeping a backup of your original files and for downloading your converted files immediately. We are not liable for any loss of files due to cleanup procedures or system failures.</p>
+
+                    <h3>5. Termination</h3>
+                    <p>We may terminate or suspend your access to the Service immediately, without prior notice or liability, for any reason, including without limitation if you breach the Terms. All provisions of the Terms which, by their nature, should survive termination shall survive termination, including, without limitation, ownership provisions, warranty disclaimers, indemnity, and limitations of liability.</p>
+
+                    <h3>6. Disclaimer of Warranties</h3>
+                    <p>The Service is provided on an "AS IS" and "AS AVAILABLE" basis. UltraConvert makes no warranties, expressed or implied, regarding the operation or availability of the Service, or the content, information, or materials included therein. To the full extent permissible by law, we disclaim all warranties, including, but not limited to, implied warranties of merchantability and fitness for a particular purpose.</p>
+
+                    <h3>7. Limitation of Liability</h3>
+                    <p>In no event shall UltraConvert, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Service; (ii) any conduct or content of any third party on the Service; (iii) any content obtained from the Service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage.</p>
+
+                    <h3>8. Governing Law</h3>
+                    <p>These Terms shall be governed and construed in accordance with the laws of [Jurisdiction, e.g., the State of California, USA], without regard to its conflict of law provisions.</p>
+
+                    <h3>9. Changes to Terms</h3>
+                    <p>We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will try to provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion. By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms.</p>
+
+                    <h3>10. Contact Information</h3>
+                    <p>If you have any questions about these Terms, please contact us at:</p>
+                    <ul>
+                        <li><strong>Email:</strong> [your-email@example.com]</li>
                     </ul>
                 </div>
             </section>
 
+            <section id="view-about" class="view-section">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h1>About UltraConvert</h1>
+                    <p>Open source. Lightweight. Secure. Built for modern workflows.</p>
+                </div>
+
+                <div class="info-card" style="margin-bottom: 2rem;">
+                    <h3>What is this tool?</h3>
+                    <p>UltraConvert is a specialized, lightweight web interface for the powerful Python <strong>Pillow</strong> library. It allows you to perform complex image manipulations—format conversion, high-quality resizing, and algorithm-based compression—without needing to use the command line or install heavy desktop software like Photoshop. It focuses on providing a fast, secure, and privacy-focused conversion utility.</p>
+
+                    <h3>Key Features & Capabilities</h3>
+                    <ul>
+                        <li><strong>Batch Conversion Ready:</strong> Built with a job-queue architecture to handle multiple large files concurrently.</li>
+                        <li><strong>High-Fidelity Resizing:</strong> Uses the advanced <a href="https://pillow.readthedocs.io/en/stable/handbook/concepts.html#resampling-filters">LANCZOS resampling filter</a> for superior image quality during scaling.</li>
+                        <li><strong>Lossy & Lossless Compression:</strong> Fine-tune JPG/WebP quality from 1% to 100% for optimal size/quality balance.</li>
+                        <li><strong>Transparency Support:</strong> Full support for PNG, GIF, and WebP transparency, including automatic compositing over a white background when converting to opaque formats (JPEG/BMP).</li>
+                        <li><strong>Opacity Adjustment:</strong> Unique feature to control the overall transparency of an image before saving.</li>
+                        <li><strong>Secure & Self-Cleaning:</strong> All uploaded files and conversion outputs are automatically deleted from the server after a short period (30 minutes) for user privacy.</li>
+                    </ul>
+                </div>
+
+                <h3>Architecture and Technology Stack</h3>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <div class="info-card">
+                        <div class="icon-badge">🐍</div>
+                        <h3>Powered by Python/Flask</h3>
+                        <p>The backend runs on a lightweight <a href="https://flask.palletsprojects.com/">Flask</a> server backed by Python 3. It manages file uploads, job queuing, and API routing. This minimal setup ensures low resource usage and high stability.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon-badge">⚙️</div>
+                        <h3>Thread-Safe Processing</h3>
+                        <p>Image processing is delegated to a multi-threaded worker pool (<a href="https://docs.python.org/3/library/concurrent.futures.html#threadpoolexecutor">ThreadPoolExecutor</a>), ensuring the main web server thread remains responsive, even during long conversions. A global lock (`JOB_LOCK`) maintains the integrity of the job queue state.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon-badge">⚡</div>
+                        <h3>Asynchronous Frontend</h3>
+                        <p>The frontend is built with pure HTML5 and vanilla JavaScript/CSS. It relies entirely on the Fetch API for all communication, enabling a modern, single-page application (SPA) feel without the overhead of heavy frameworks.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon-badge">🔒</div>
+                        <h3>Security & Performance</h3>
+                        <p>The application includes built-in security features such as rate limiting (via <a href="https://flask-limiter.readthedocs.io/">Flask-Limiter</a>), file type validation (using `python-magic`), and secure, token-based filenames to prevent directory traversal and unauthorized access to output files.</p>
+                    </div>
+                </div>
+            </section>
         </main>
 
         <footer>
-            &copy; <script>document.write(new Date().getFullYear())</script> UltraConvert. Secure. Fast. AI-Powered.
+            &copy; <script>document.write(new Date().getFullYear())</script> UltraConvert. Secure. Fast. Private.
         </footer>
     </div>
 
     <script>
         // --- GLOBAL STATE ---
         let CONVERSIONS = [];
-        let FILE = null; // Current file object
-        let FILE_URL = null; // URL for previewing the input file
+        let FILE = null;
         let JOB_ID = null;
         let TIMER = null;
 
@@ -736,18 +759,14 @@
         function switchView(viewId) {
             // Update Header Tabs
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            const nav = document.getElementById(`nav-${viewId}`);
-            if(nav) nav.classList.add('active');
+            document.getElementById(`nav-${viewId}`).classList.add('active');
 
             // Animate Views
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             const target = document.getElementById(`view-${viewId}`);
-            if(target) target.classList.add('active');
+            target.classList.add('active');
 
-            // Hide global result if switching tabs
-            document.getElementById('state-result').style.display = 'none';
-
-            // Scroll to top
+            // Scroll to top smoothly
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -759,41 +778,20 @@
             body.classList.toggle('open');
         }
 
-        function showState(mode, stateSuffix) {
-             // Hide all states in current view
-             if(mode === 'conv') {
-                 document.getElementById('state-upload-conv').style.display = 'none';
-                 document.getElementById('state-config-conv').style.display = 'none';
-                 document.getElementById(`state-${stateSuffix}-conv`).style.display = 'block';
-             } else if (mode === 'up') {
-                 document.getElementById('state-upload-up').style.display = 'none';
-                 document.getElementById('state-config-up').style.display = 'none';
-                 document.getElementById(`state-${stateSuffix}-up`).style.display = 'block';
-             }
-        }
+        function showState(stateId) {
+            ['state-upload', 'state-config', 'state-result'].forEach(id => {
+                document.getElementById(id).style.display = 'none';
+            });
+            const el = document.getElementById(stateId);
+            el.style.display = 'block';
 
-        function moveSlider(val) {
-            const afterImg = document.getElementById('comp-after');
-            // Clip the top image from the right side based on slider value
-            // 100% slider = 0% clip (fully visible)
-            // 0% slider = 100% clip (hidden)
-            const clipVal = 100 - val;
-            afterImg.style.clipPath = `inset(0 ${clipVal}% 0 0)`;
-        }
-
-        function triggerResultView() {
-            // Hide configs
-            document.getElementById('state-config-conv').style.display = 'none';
-            document.getElementById('state-config-up').style.display = 'none';
-
-            const res = document.getElementById('state-result');
-            res.style.display = 'block';
-            res.style.opacity = '0';
-            res.style.transform = 'translateY(10px)';
+            // Trigger animation
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(10px)';
             setTimeout(() => {
-                res.style.transition = 'all 0.4s ease-out';
-                res.style.opacity = '1';
-                res.style.transform = 'translateY(0)';
+                el.style.transition = 'all 0.4s ease-out';
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
             }, 10);
         }
 
@@ -820,21 +818,30 @@
             sel.addEventListener('change', () => {
                 const opt = sel.options[sel.selectedIndex];
                 const accQ = document.getElementById('acc-quality');
+                // Only show Quality slider if format supports it (like JPG, WebP)
                 if(opt.dataset.quality === 'true') {
                     accQ.style.display = 'block';
                 } else {
                     accQ.style.display = 'none';
                 }
             });
-            sel.dispatchEvent(new Event('change'));
+            sel.dispatchEvent(new Event('change')); // Trigger once
         }
 
         function setupEvents() {
-            // Converter Logic
-            setupDropzone('dropzone-conv', 'file-input-conv', 'conv');
+            const dz = document.getElementById('dropzone');
+            const inp = document.getElementById('file-input');
 
-            // Upscaler Logic
-            setupDropzone('dropzone-up', 'file-input-up', 'up');
+            // Drag & Drop
+            dz.onclick = () => inp.click();
+            dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag-over'); };
+            dz.ondragleave = () => dz.classList.remove('drag-over');
+            dz.ondrop = (e) => {
+                e.preventDefault();
+                dz.classList.remove('drag-over');
+                handleFile(e.dataTransfer.files[0]);
+            };
+            inp.onchange = (e) => handleFile(e.target.files[0]);
 
             // Sliders
             document.getElementById('inp-quality').oninput = (e) => {
@@ -843,91 +850,73 @@
             document.getElementById('inp-opacity').oninput = (e) => {
                 document.getElementById('opacity-disp').textContent = e.target.value + '%';
             };
-        }
 
-        function setupDropzone(dzId, inpId, mode) {
-            const dz = document.getElementById(dzId);
-            const inp = document.getElementById(inpId);
-
-            dz.onclick = () => inp.click();
-            dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag-over'); };
-            dz.ondragleave = () => dz.classList.remove('drag-over');
-            dz.ondrop = (e) => {
-                e.preventDefault();
-                dz.classList.remove('drag-over');
-                handleFile(e.dataTransfer.files[0], mode);
-            };
-            inp.onchange = (e) => handleFile(e.target.files[0], mode);
+            // Actions
+            document.getElementById('btn-process').onclick = startJob;
         }
 
         // --- CORE LOGIC ---
-        function handleFile(f, mode) {
+        function handleFile(f) {
             if(!f || !f.type.startsWith('image/')) return alert("Image files only, please.");
             FILE = f;
-            FILE_URL = URL.createObjectURL(f); // Create local preview URL
-
-            const sizeStr = (f.size / (1024*1024)).toFixed(2) + " MB";
-            if(mode === 'conv') {
-                document.getElementById('file-name-conv').textContent = f.name;
-                document.getElementById('file-size-conv').textContent = sizeStr;
-                showState('conv', 'config');
-            } else {
-                document.getElementById('file-name-up').textContent = f.name;
-                document.getElementById('file-size-up').textContent = sizeStr;
-                showState('up', 'config');
-            }
+            document.getElementById('file-name').textContent = f.name;
+            document.getElementById('file-size').textContent = (f.size / (1024*1024)).toFixed(2) + " MB";
+            showState('state-config');
         }
 
-        function resetApp(mode) {
+        function resetApp() {
             FILE = null;
-            FILE_URL = null;
             clearInterval(TIMER);
-            document.getElementById(`file-input-${mode}`).value = '';
-            showState(mode, 'upload');
+            document.getElementById('file-input').value = '';
+            document.getElementById('inp-width').value = '';
+            document.getElementById('inp-height').value = '';
+
+            // Reset sliders to default
+            document.getElementById('inp-quality').value = 90;
+            document.getElementById('quality-disp').textContent = '90%';
+            document.getElementById('inp-opacity').value = 100;
+            document.getElementById('opacity-disp').textContent = '100%';
+
             document.getElementById('progress-bar').style.width = '0%';
             document.getElementById('final-actions').style.display = 'none';
-            document.getElementById('compare-wrapper').style.display = 'none';
-            document.getElementById('preview-area').style.display = 'none';
+            document.getElementById('preview-area').innerHTML = '';
+            showState('state-upload');
         }
 
-        async function startJob(mode) {
-            triggerResultView(); // Show shared result view
+        async function startJob() {
+            document.getElementById('btn-process').disabled = true;
+            showState('state-result');
 
             const fd = new FormData();
             fd.append('file', FILE);
-            fd.append('mode', mode); // 'convert' or 'upscale'
-
-            if(mode === 'convert') {
-                fd.append('conversion_key', document.getElementById('format-select').value);
-                fd.append('settings', JSON.stringify({
-                    width: document.getElementById('inp-width').value,
-                    height: document.getElementById('inp-height').value,
-                    maintain_ar: document.getElementById('check-ar').checked,
-                    quality: document.getElementById('inp-quality').value,
-                    opacity: document.getElementById('inp-opacity').value
-                }));
-            } else {
-                // Upscale Mode
-                fd.append('settings', JSON.stringify({
-                    upscale_res: document.getElementById('upscale-res').value
-                }));
-            }
+            fd.append('conversion_key', document.getElementById('format-select').value);
+            fd.append('settings', JSON.stringify({
+                width: document.getElementById('inp-width').value,
+                height: document.getElementById('inp-height').value,
+                maintain_ar: document.getElementById('check-ar').checked,
+                quality: document.getElementById('inp-quality').value,
+                opacity: document.getElementById('inp-opacity').value // New param sent to backend
+            }));
 
             try {
                 const req = await fetch('/api/jobs', { method:'POST', body:fd });
                 const res = await req.json();
 
-                if(!req.ok) throw new Error(res.msg || "Server Error");
+                if(!req.ok) {
+                    throw new Error(res.msg || "Server Error");
+                }
 
                 JOB_ID = res.job_id;
-                TIMER = setInterval(() => poll(mode), 1000); // Pass mode to poll
+                TIMER = setInterval(poll, 1000);
             } catch (e) {
                 alert("Error: " + e.message);
-                window.location.reload();
+                resetApp();
+            } finally {
+                document.getElementById('btn-process').disabled = false;
             }
         }
 
-        async function poll(mode) {
+        async function poll() {
             try {
                 const req = await fetch(`/api/status/${JOB_ID}`);
                 const res = await req.json();
@@ -936,16 +925,8 @@
                 const txt = document.getElementById('status-text');
 
                 if(res.status === 'running' || res.status === 'queued') {
-                    // Make progress move a bit even if backend is stuck (UX)
-                    const currentW = parseFloat(bar.style.width) || 0;
-                    const visualProgress = Math.max(currentW, res.progress);
-                    bar.style.width = visualProgress + "%";
-
-                    if(mode === 'upscale') {
-                         txt.textContent = res.status === 'queued' ? "Waiting for AI..." : "AI is Enhancing (this may take 20s)...";
-                    } else {
-                         txt.textContent = res.status === 'queued' ? "Waiting in queue..." : "Processing pixels...";
-                    }
+                    bar.style.width = Math.max(10, res.progress) + "%";
+                    txt.textContent = res.status === 'queued' ? "Waiting in queue..." : "Processing pixels...";
                 } else if (res.status === 'completed') {
                     clearInterval(TIMER);
                     bar.style.width = "100%";
@@ -954,34 +935,16 @@
 
                     const acts = document.getElementById('final-actions');
                     acts.style.display = 'block';
+                    // Animation for result
                     acts.style.opacity = 0;
                     setTimeout(() => acts.style.opacity = 1, 100);
 
-                    const downloadBtn = document.getElementById('btn-download');
-                    downloadBtn.href = res.download_url;
-
-                    if (mode === 'upscale') {
-                        // Setup Comparison Slider
-                        document.getElementById('compare-wrapper').style.display = 'block';
-                        document.getElementById('preview-area').style.display = 'none';
-
-                        document.getElementById('comp-before').src = FILE_URL; // Local preview
-                        document.getElementById('comp-after').src = res.download_url; // Result from server
-                        // Reset slider
-                        document.getElementById('comp-slider-input').value = 50;
-                        moveSlider(50);
-                    } else {
-                        // Standard Preview
-                        document.getElementById('compare-wrapper').style.display = 'none';
-                        const pbox = document.getElementById('preview-area');
-                        pbox.style.display = 'block';
-                        pbox.innerHTML = `<img src="${res.download_url}" class="preview-img">`;
-                    }
-
+                    document.getElementById('btn-download').href = res.download_url;
+                    document.getElementById('preview-area').innerHTML = `<img src="${res.download_url}" class="preview-img">`;
                 } else if (res.status === 'failed') {
                     clearInterval(TIMER);
                     alert("Failed: " + res.log);
-                    window.location.reload();
+                    resetApp();
                 }
             } catch(e) { console.error(e); }
         }

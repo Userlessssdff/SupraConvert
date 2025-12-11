@@ -126,7 +126,7 @@
         }
 
         /* --- Animated Views --- */
-        main { flex: 1; padding: 3rem; position: relative; display: flex; flex-direction: column; }
+        main { flex: 1; padding: 3rem; position: relative; }
 
         .view-section {
             /* Smooth Fade In/Out Logic */
@@ -254,13 +254,15 @@
             background: #fff;
         }
         .accordion-body.open {
-            max-height: 500px;
+            max-height: 1000px; /* Increased max-height for new content */
             opacity: 1;
             padding: 1.5rem;
             border-top: 1px solid var(--border);
         }
         .chevron { transition: transform 0.3s; }
         .settings-accordion.active .chevron { transform: rotate(180deg); }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; }
+        .checkbox-group label { display: flex; align-items: center; gap: 0.5rem; }
 
         /* --- Component: Buttons --- */
         .btn {
@@ -301,7 +303,7 @@
         }
         @keyframes stripe-move { from { background-position: 1rem 0; } to { background-position: 0 0; } }
 
-        /* --- Comparison Slider Styles --- */
+        /* --- Comparison Slider Styles (Kept, just in case, but no longer used for Upscale) --- */
         .comp-container {
             position: relative;
             width: 100%;
@@ -390,7 +392,6 @@
             </div>
             <nav class="nav-pills">
                 <div class="nav-item active" onclick="switchView('home')" id="nav-home">Converter</div>
-                <div class="nav-item" onclick="switchView('upscale')" id="nav-upscale">Upscale ✨</div>
                 <div class="nav-item" onclick="switchView('policy')" id="nav-policy">Policy</div>
                 <div class="nav-item" onclick="switchView('terms')" id="nav-terms">Terms</div>
                 <div class="nav-item" onclick="switchView('about')" id="nav-about">About</div>
@@ -420,51 +421,112 @@
                 <div id="state-config-conv" class="hidden" style="display: none;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; background: #fff; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
                         <div style="display: flex; align-items: center; gap: 1rem;">
-                            <div style="font-size: 2rem;">📄</div>
+                            <span style="font-size: 1.5rem;">📁</span>
                             <div>
-                                <div style="font-weight: 700;" id="file-name-conv">image.png</div>
-                                <div style="font-size: 0.9rem; color: var(--text-muted);" id="file-size-conv">2.4 MB</div>
+                                <strong id="file-name-conv">File Name</strong>
+                                <span style="color: var(--text-muted); font-size: 0.9rem;">(Original Size: <span id="file-size-conv">0 MB</span>)</span>
                             </div>
                         </div>
-                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="resetApp('conv')">Change File</button>
+                        <button class="btn btn-secondary btn-sm" onclick="resetApp('conv')">Cancel</button>
                     </div>
 
-                    <div style="max-width: 600px; margin: 0 auto;">
-                        <label style="font-weight: 700; display: block; margin-bottom: 0.5rem;">Target Format</label>
-                        <select id="format-select" class="form-control">
-                            </select>
+                    <h2>Conversion Settings</h2>
 
-                        <div class="settings-accordion" id="acc-resize">
-                            <div class="accordion-head" onclick="toggleAccordion('acc-resize')">
-                                <span>📐 Resize & Scale</span>
-                                <span class="chevron">▼</span>
-                            </div>
-                            <div class="accordion-body">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div>
-                                        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Width (px)</label>
-                                        <input type="number" id="inp-width" class="form-control" placeholder="Original">
-                                    </div>
-                                    <div>
-                                        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Height (px)</label>
-                                        <input type="number" id="inp-height" class="form-control" placeholder="Original">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h4>Target Format</h4>
+                        <select id="format-select" class="form-control" onchange="updateFormatSettings()">
+                            </select>
+                    </div>
+
+                    <div class="settings-accordion active" id="acc-features">
+                        <div class="accordion-head" onclick="toggleAccordion('acc-features')">
+                            <span>🎨 Image Adjustments (11 New Controls)</span>
+                            <span class="chevron">▼</span>
+                        </div>
+                        <div class="accordion-body open">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                                <div>
+                                    <h4>Filters</h4>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" id="check-grayscale"> Grayscale (Feature 4)</label>
+                                        <label><input type="checkbox" id="check-sepia"> Sepia Tone (Feature 5)</label>
+                                        <label><input type="checkbox" id="check-invert"> Invert Colors (Feature 6)</label>
                                     </div>
                                 </div>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; cursor: pointer;">
-                                    <input type="checkbox" id="check-ar" checked style="width: 1.2rem; height: 1.2rem; accent-color: var(--primary);">
-                                    <span style="font-size: 0.9rem;">Maintain Aspect Ratio</span>
-                                </label>
+                                <div>
+                                    <h4>Transforms</h4>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" id="check-flip-h"> Flip Horizontal (Feature 2)</label>
+                                        <label><input type="checkbox" id="check-flip-v"> Flip Vertical (Feature 3)</label>
+                                    </div>
+                                    <h4 style="margin-top: 1rem;">Rotate (Feature 1)</h4>
+                                    <input type="number" id="inp-rotate" class="form-control" placeholder="Angle in degrees (e.g., 90)" value="0" min="0" max="360" step="1">
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="settings-accordion" id="acc-quality">
-                            <div class="accordion-head" onclick="toggleAccordion('acc-quality')">
-                                <span>🎨 Quality & Compression</span>
-                                <span class="chevron">▼</span>
-                            </div>
-                            <div class="accordion-body">
+                            
+                            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+                            
+                            <h4 style="margin-bottom: 1rem;">Enhancements</h4>
+                            
+                            <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span>Compression Level</span>
+                                    <span>🔆 Brightness</span>
+                                    <span style="font-weight: 700; color: var(--primary);" id="brightness-disp">100%</span>
+                                </div>
+                                <input type="range" id="inp-brightness" min="0" max="200" value="100" style="width: 100%; accent-color: var(--primary);">
+                            </div>
+
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>⚫⚪ Contrast</span>
+                                    <span style="font-weight: 700; color: var(--primary);" id="contrast-disp">100%</span>
+                                </div>
+                                <input type="range" id="inp-contrast" min="0" max="200" value="100" style="width: 100%; accent-color: var(--primary);">
+                            </div>
+                            
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>🔍 Sharpen Level</span>
+                                    <span style="font-weight: 700; color: var(--primary);" id="sharpen-disp">0%</span>
+                                </div>
+                                <input type="range" id="inp-sharpen" min="0" max="100" value="0" style="width: 100%; accent-color: var(--primary);">
+                            </div>
+                            
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>🌫️ Blur Level</span>
+                                    <span style="font-weight: 700; color: var(--primary);" id="blur-disp">0</span>
+                                </div>
+                                <input type="range" id="inp-blur" min="0" max="100" value="0" style="width: 100%; accent-color: var(--primary);">
+                            </div>
+
+                            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+
+                            <h4 style="margin-bottom: 1rem;">Image Border (Bonus)</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <span>Border Size (px)</span>
+                                    <input type="number" id="inp-border-size" class="form-control" value="0" min="0" max="500">
+                                </div>
+                                <div>
+                                    <span>Border Color</span>
+                                    <input type="color" id="inp-border-color" class="form-control" value="#000000">
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="settings-accordion" id="acc-quality">
+                        <div class="accordion-head" onclick="toggleAccordion('acc-quality')">
+                            <span>⚙️ Quality & Compression</span>
+                            <span class="chevron">▼</span>
+                        </div>
+                        <div class="accordion-body">
+                            <div id="quality-controls">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Image Quality</span>
                                     <span style="font-weight: 700; color: var(--primary);" id="quality-disp">90%</span>
                                 </div>
                                 <input type="range" id="inp-quality" min="1" max="100" value="90" style="width: 100%; accent-color: var(--primary);">
@@ -473,80 +535,93 @@
                                     <span>High (Best Look)</span>
                                 </div>
                             </div>
+                            <p id="quality-note" style="font-size: 0.9rem; margin-top: 1rem; color: var(--error); display: none;">
+                                Note: This format does not support quality/compression control.
+                            </p>
                         </div>
+                    </div>
 
-                         <div class="settings-accordion" id="acc-opacity">
-                            <div class="accordion-head" onclick="toggleAccordion('acc-opacity')">
-                                <span>💧 Transparency / Opacity</span>
-                                <span class="chevron">▼</span>
-                            </div>
-                            <div class="accordion-body">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span>Opacity Level</span>
-                                    <span style="font-weight: 700; color: var(--primary);" id="opacity-disp">100%</span>
+                    <div class="settings-accordion" id="acc-resize">
+                        <div class="accordion-head" onclick="toggleAccordion('acc-resize')">
+                            <span>📏 Resizing & Dimensions</span>
+                            <span class="chevron">▼</span>
+                        </div>
+                        <div class="accordion-body">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <span>Width (px)</span>
+                                    <input type="number" id="inp-width" class="form-control" placeholder="Original">
                                 </div>
-                                <input type="range" id="inp-opacity" min="0" max="100" value="100" style="width: 100%; accent-color: var(--primary);">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
-                                    <span>Transparent (Invisible)</span>
-                                    <span>Opaque (Solid)</span>
+                                <div>
+                                    <span>Height (px)</span>
+                                    <input type="number" id="inp-height" class="form-control" placeholder="Original">
                                 </div>
                             </div>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                                <input type="checkbox" id="check-ar" checked>
+                                Maintain Aspect Ratio (Resize to fit)
+                            </label>
                         </div>
-
-                        <button onclick="startJob('convert')" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 1.2rem;">
-                            🚀 Start Conversion
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <section id="view-upscale" class="view-section">
-                <div id="state-upload-up">
-                    <div style="text-align: center; margin-bottom: 3rem;">
-                        <h1>AI Image Upscaling</h1>
-                        <p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
-                            Enhance resolution and details using state-of-the-art AI models via Hugging Face.
-                        </p>
                     </div>
 
-                    <input type="file" id="file-input-up" hidden accept="image/*">
-                    <div id="dropzone-up" class="dropzone-container" style="border-color: #8b5cf6; background: linear-gradient(to bottom, #f5f3ff, #f1f5f9);">
-                        <span class="drop-icon">✨</span>
-                        <h3>Drag & Drop to Upscale</h3>
-                        <p>Automatically enhances quality and resolution.</p>
-                        <button class="btn btn-secondary" style="margin-top: 1rem;">Browse Files</button>
-                    </div>
-                </div>
 
-                <div id="state-config-up" class="hidden" style="display: none;">
-                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; background: #fff; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <div style="font-size: 2rem;">✨</div>
-                            <div>
-                                <div style="font-weight: 700;" id="file-name-up">image.png</div>
-                                <div style="font-size: 0.9rem; color: var(--text-muted);" id="file-size-up">2.4 MB</div>
+                    <div class="settings-accordion" id="acc-opacity">
+                        <div class="accordion-head" onclick="toggleAccordion('acc-opacity')">
+                            <span>💧 Transparency / Opacity</span>
+                            <span class="chevron">▼</span>
+                        </div>
+                        <div class="accordion-body">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Opacity Level</span>
+                                <span style="font-weight: 700; color: var(--primary);" id="opacity-disp">100%</span>
+                            </div>
+                            <input type="range" id="inp-opacity" min="0" max="100" value="100" style="width: 100%; accent-color: var(--primary);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                <span>Transparent (Invisible)</span>
+                                <span>Opaque (Solid)</span>
                             </div>
                         </div>
-                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="resetApp('up')">Change File</button>
                     </div>
-
-                    <div style="max-width: 500px; margin: 0 auto; text-align: center;">
-                         <label style="font-weight: 700; display: block; margin-bottom: 0.5rem; text-align: left;">Target Resolution</label>
-                         <select id="upscale-res" class="form-control">
-                             <option value="original">2x Enlarge (AI Native)</option>
-                             <option value="1080p">1080p (Full HD)</option>
-                             <option value="2k">2K (QHD)</option>
-                             <option value="4k">4K (UHD)</option>
-                         </select>
-
-                         <p style="font-size:0.9rem; color: var(--text-muted; margin-top: 1rem;">
-                             Using <strong>Swin2SR</strong> model. Large files may take ~20 seconds.
-                         </p>
-                         <button onclick="startJob('upscale')" class="btn btn-primary" style="background: #8b5cf6; width: 100%; margin-top: 1rem; padding: 1.2rem;">
-                            ✨ Start Magic Upscale
-                        </button>
-                    </div>
+                    
+                    <button onclick="startJob('convert')" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 1.2rem;">
+                        🚀 Start Conversion
+                    </button>
                 </div>
+
+                <div id="state-result" class="hidden" style="display: none; text-align: center; padding-top: 2rem;">
+                    <h2 id="status-head">Processing Image...</h2>
+                    <div class="progress-track">
+                        <div id="progress-bar" class="progress-fill"></div>
+                    </div>
+                    <p id="status-text">Uploading to secure environment...</p>
+
+                    <div id="final-actions" style="display: none;">
+                        <div id="compare-wrapper" style="display:none;">
+                            <h4 style="margin-top: 2rem;">Result Comparison (Drag the slider)</h4>
+                            <div class="comp-container">
+                                <img id="comp-before" class="comp-img" src="" alt="Before">
+                                <div class="comp-label" style="left: 10px;">Original</div>
+                                <img id="comp-after" class="comp-img comp-img-after" src="" alt="After">
+                                <div class="comp-label" style="right: 10px;">New Image</div>
+                                <input type="range" min="0" max="100" value="50" oninput="moveSlider(this.value)" class="comp-slider">
+                            </div>
+                            <p style="font-size: 0.9rem; color: var(--text-muted);">
+                                Note: Comparison uses the original image for the "Before" state.
+                            </p>
+                        </div>
+
+                        <div id="preview-area" style="margin: 2rem auto; max-width: 600px; display: none;">
+                            <h4 style="margin-top: 2rem;">Processed Image Preview</h4>
+                        </div>
+
+                        <a id="download-btn" href="#" class="btn btn-primary" style="margin-top: 2rem; margin-bottom: 1rem;">
+                            📥 Download File
+                        </a>
+                        <button class="btn btn-secondary" onclick="resetApp('conv')">Process Another</button>
+                    </div>
+
+                </div>
+
             </section>
 
             <section id="view-policy" class="view-section">
@@ -554,11 +629,9 @@
                     <h1>Privacy Policy</h1>
                     <p>Last Updated: <script>document.write(new Date().toLocaleDateString())</script></p>
                 </div>
-
                 <div class="info-card" style="max-width: 900px; margin: 0 auto;">
                     <h3>1. Information We Collect</h3>
                     <p>We may collect the following types of data:</p>
-
                     <h4>A. Automatically Collected Data</h4>
                     <p>When you visit our site, we automatically collect:</p>
                     <ul>
@@ -568,14 +641,12 @@
                         <li>Pages visited and time spent</li>
                         <li>Cookies and similar tracking technologies</li>
                     </ul>
-
                     <h4>B. Information You Provide Voluntarily</h4>
                     <ul>
                         <li>Form submissions (e.g., contact form)</li>
                         <li>Email address (if you subscribe or contact us)</li>
                         <li>Any content you upload or send through the site</li>
                     </ul>
-
                     <h3>2. Use of Cookies</h3>
                     <p>We use cookies for:</p>
                     <ul>
@@ -584,52 +655,29 @@
                         <li>Remembering user preferences</li>
                         <li>Serving personalized ads</li>
                     </ul>
-
                     <h4>Google AdSense Cookies</h4>
                     <p>We use Google AdSense, which may use:</p>
                     <ul>
-                        <li>Cookies</li>
-                        <li>Web beacons</li>
-                        <li>DART cookies (for personalized advertising)</li>
+                        <li>The DART cookie for ad serving based on your visit to this site and other sites on the internet.</li>
+                        <li>Opt-out: You may opt out of the use of the DART cookie by visiting the Google Ad and Content Network Privacy Policy.</li>
                     </ul>
-                    <p>Google may use your data to deliver ads based on your previous visits to our website or others and to personalize ad experiences.</p>
-                    <p>Users can opt out of personalized advertising by visiting: <a href="https://www.google.com/settings/ads" target="_blank" style="color:var(--primary); font-weight:700;">Google Ad Settings</a></p>
-
-                    <h3>3. How We Use Your Information</h3>
-                    <p>We use collected data for:</p>
+                    <h3>3. How We Use Your Data</h3>
+                    <p>We use the collected data to:</p>
                     <ul>
-                        <li>Improving website functionality and performance</li>
-                        <li>Personalizing user experience</li>
-                        <li>Analytics and security</li>
-                        <li>Showing relevant ads (via Google AdSense)</li>
-                        <li>Responding to your inquiries</li>
+                        <li>Operate, maintain, and improve our services.</li>
+                        <li>Personalize your experience.</li>
+                        <li>Process and execute your image conversion requests (files are deleted immediately after processing/download period).</li>
+                        <li>Communicate with you (e.g., responding to inquiries).</li>
+                        <li>Provide targeted advertisements.</li>
                     </ul>
-
-                    <h3>4. Third-Party Advertising and Services</h3>
-                    <p>We may share anonymized data with:</p>
-                    <ul>
-                        <li>Google AdSense</li>
-                        <li>Google Analytics</li>
-                        <li>Advertising networks</li>
-                        <li>Security or analytics partners</li>
-                    </ul>
-                    <p>These parties follow their own privacy policies. You can review Google’s policies here: <a href="https://policies.google.com/technologies/ads" target="_blank" style="color:var(--primary); font-weight:700;">Google Ads Privacy</a></p>
-
-                    <h3>5. Data Protection & Security</h3>
-                    <p>We take reasonable steps to protect your information by:</p>
-                    <ul>
-                        <li>Using encrypted connections (HTTPS)</li>
-                        <li>Limiting access to data</li>
-                        <li>Preventing unauthorized access</li>
-                    </ul>
-                    <p>However, no method is 100% secure, and we cannot guarantee absolute protection.</p>
-
+                    <h3>4. Data Retention & Deletion</h3>
+                    <p>Uploaded files and generated output files are automatically and permanently deleted from our servers approximately 30 minutes after the job is completed or after a download link expires.</p>
+                    <h3>5. Data Security</h3>
+                    <p>We implement industry-standard security measures, including SSL encryption and secure server environments, but no method of transmission over the Internet or electronic storage is 100% secure.</p>
                     <h3>6. Children's Privacy</h3>
-                    <p>Our website is not intended for children under 13. We do not knowingly collect data from children.</p>
-
+                    <p>The service is not directed to children under the age of 13. We do not knowingly collect data from children.</p>
                     <h3>7. Links to External Websites</h3>
                     <p>Our website may contain links to third-party websites. We are not responsible for their privacy policies or content.</p>
-
                     <h3>8. Your Rights</h3>
                     <p>You may request:</p>
                     <ul>
@@ -639,10 +687,8 @@
                         <li>Opt-out of personalized ads</li>
                     </ul>
                     <p>To do so, contact us at: <strong>[Your Contact Email]</strong></p>
-
                     <h3>9. Changes to This Privacy Policy</h3>
                     <p>We may update this policy from time to time. Any changes will be posted on this page with an updated date.</p>
-
                     <h3>10. Contact Us</h3>
                     <p>If you have any questions about this Privacy Policy, please contact us at:</p>
                     <p>📧 <strong>[Your Email]</strong></p>
@@ -650,101 +696,70 @@
             </section>
 
             <section id="view-terms" class="view-section">
-                 <div style="text-align: center; margin-bottom: 3rem;">
+                <div style="text-align: center; margin-bottom: 3rem;">
                     <h1>Terms of Service</h1>
                 </div>
                 <div class="info-card" style="max-width: 900px; margin: 0 auto;">
                     <h3>1. Acceptance</h3>
                     <p>By using UltraConvert, you agree to these terms.</p>
-
                     <h3>2. License to UltraConvert</h3>
                     <p>You grant us a temporary license to process your files. We claim no ownership over your content.</p>
-
                     <h3>3. Restrictions</h3>
                     <p>You may not use this service to process illegal content or attempt to harm the service infrastructure.</p>
-
                     <h3>4. Disclaimer</h3>
                     <p>The service is provided "AS IS". We are not responsible for any data loss or corruption.</p>
                 </div>
             </section>
 
-             <section id="view-about" class="view-section">
+            <section id="view-about" class="view-section">
                 <div style="text-align: center; margin-bottom: 3rem;">
                     <h1>About UltraConvert</h1>
                 </div>
                 <div class="info-card" style="margin-bottom: 2rem;">
-                    <h3>Hybrid Architecture</h3>
-                    <p>UltraConvert combines local Python Pillow processing with powerful cloud AI.</p>
+                    <h3>Purely Local Processing</h3>
+                    <p>UltraConvert now runs entirely on your local server. All conversion and editing tasks are handled privately and quickly using the Python Pillow library.</p>
                     <ul>
-                        <li><strong>Conversion:</strong> Runs locally on this server using Python Pillow. Fast and private.</li>
-                        <li><strong>Upscaling:</strong> Powered by the Hugging Face Inference API, utilizing advanced Super Resolution models (Swin2SR).</li>
+                        <li><strong>Conversion & Editing:</strong> Runs locally on this server using Python Pillow. Fast and private.</li>
+                        <li><strong>Features:</strong> Enjoy lossless format conversion, compression control, and the new suite of image editing tools (Rotate, Flip, Grayscale, Sepia, Brightness, Contrast, Sharpen, Blur, Border).</li>
                     </ul>
                 </div>
+                <div class="info-card">
+                    <h3>Technical Stack</h3>
+                    <p>The backend is built with Python/Flask, ensuring high performance and thread safety for concurrent jobs. The frontend is a modern, responsive HTML/CSS/JS application.</p>
+                </div>
             </section>
-
-            <div id="state-result" class="hidden" style="display: none; text-align: center; padding-top: 2rem; width: 100%;">
-                <h2 id="status-head">Processing Image...</h2>
-                <div class="progress-track">
-                    <div id="progress-bar" class="progress-fill"></div>
-                </div>
-                <p id="status-text">Uploading to secure environment...</p>
-
-                <div id="final-actions" style="display: none;">
-                    <div id="compare-wrapper" style="display:none;">
-                        <div class="comp-container">
-                            <img id="comp-before" class="comp-img" src="" alt="Before">
-                            <div class="comp-label" style="left: 10px;">Before</div>
-                            <img id="comp-after" class="comp-img comp-img-after" src="" alt="After">
-                            <div class="comp-label" style="right: 10px;">After</div>
-                            <input type="range" min="0" max="100" value="50" class="comp-slider" id="comp-slider-input" oninput="moveSlider(this.value)">
-                        </div>
-                        <p style="font-size: 0.9rem; color: var(--text-muted);">Slide to compare</p>
-                    </div>
-
-                    <div class="preview-box" id="preview-area" style="display:none; margin: 2rem auto;"></div>
-
-                    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap;">
-                        <a id="btn-download" class="btn btn-primary" href="#" target="_blank">⬇️ Download Image</a>
-                        <button class="btn btn-secondary" onclick="window.location.reload()">🔄 Start Over</button>
-                    </div>
-                    <p style="font-size: 0.8rem; color: var(--success); margin-top: 1rem;">
-                        ✅ File is ready.
-                    </p>
-                </div>
-            </div>
-
         </main>
 
         <footer>
-            &copy; <script>document.write(new Date().getFullYear())</script> UltraConvert. Secure. Fast. AI-Powered.
+            &copy; <span id="current-year"></span> UltraConvert. All rights reserved.
         </footer>
     </div>
 
     <script>
-        // --- GLOBAL STATE ---
+        // --- GLOBALS ---
         let CONVERSIONS = [];
         let FILE = null;
         let FILE_URL = null;
-        let JOB_ID = null;
         let TIMER = null;
-        let startTime = 0;
+        let currentJobId = null;
 
-        // --- NAVIGATION ---
+        // --- DOM MANIPULATION & HELPERS ---
+        
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
         function switchView(viewId) {
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            const nav = document.getElementById(`nav-${viewId}`);
-            if(nav) nav.classList.add('active');
+            document.querySelectorAll('.view-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
 
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            const target = document.getElementById(`view-${viewId}`);
-            if(target) target.classList.add('active');
-
-            // Hide shared result if switching tabs
-            document.getElementById('state-result').style.display = 'none';
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            document.getElementById(`nav-${viewId}`).classList.add('active');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // --- UI INTERACTION ---
         function toggleAccordion(id) {
             const acc = document.getElementById(id);
             const body = acc.querySelector('.accordion-body');
@@ -752,16 +767,16 @@
             body.classList.toggle('open');
         }
 
-        function showState(mode, stateSuffix) {
-             if(mode === 'conv') {
-                 document.getElementById('state-upload-conv').style.display = 'none';
-                 document.getElementById('state-config-conv').style.display = 'none';
-                 document.getElementById(`state-${stateSuffix}-conv`).style.display = 'block';
-             } else if (mode === 'up') {
-                 document.getElementById('state-upload-up').style.display = 'none';
-                 document.getElementById('state-config-up').style.display = 'none';
-                 document.getElementById(`state-${stateSuffix}-up`).style.display = 'block';
-             }
+        // Renamed and simplified: only handles 'conv' mode now
+        function showState(stateSuffix) {
+            document.getElementById('state-upload-conv').style.display = 'none';
+            document.getElementById('state-config-conv').style.display = 'none';
+            document.getElementById('state-result').style.display = 'none';
+            
+            const target = document.getElementById(`state-${stateSuffix}`);
+            if (target) {
+                target.style.display = 'block';
+            }
         }
 
         function moveSlider(val) {
@@ -771,13 +786,9 @@
         }
 
         function triggerResultView() {
-            // Hide specific configs
-            document.getElementById('state-config-conv').style.display = 'none';
-            document.getElementById('state-config-up').style.display = 'none';
-
-            // Show shared result (Now works because it's not inside a hidden section)
+            showState('result');
             const res = document.getElementById('state-result');
-            res.style.display = 'block';
+            // Reset transition for fade-in effect
             res.style.opacity = '0';
             res.style.transform = 'translateY(10px)';
             setTimeout(() => {
@@ -786,8 +797,59 @@
                 res.style.transform = 'translateY(0)';
             }, 10);
         }
+        
+        // --- INPUT HANDLERS ---
+        
+        function updateDisplay(idSuffix, val, unit = '') {
+            const disp = document.getElementById(`${idSuffix}-disp`);
+            if (disp) disp.textContent = `${val}${unit}`;
+        }
 
-        // --- INITIALIZATION ---
+        function setupSliderListeners() {
+            // Quality
+            document.getElementById('inp-quality').addEventListener('input', (e) => updateDisplay('quality', e.target.value, '%'));
+            // Opacity
+            document.getElementById('inp-opacity').addEventListener('input', (e) => updateDisplay('opacity', e.target.value, '%'));
+            // Brightness (Feature 7)
+            document.getElementById('inp-brightness').addEventListener('input', (e) => updateDisplay('brightness', e.target.value, '%'));
+            // Contrast (Feature 8)
+            document.getElementById('inp-contrast').addEventListener('input', (e) => updateDisplay('contrast', e.target.value, '%'));
+            // Sharpen (Feature 9)
+            document.getElementById('inp-sharpen').addEventListener('input', (e) => updateDisplay('sharpen', e.target.value));
+            // Blur (Feature 10)
+            document.getElementById('inp-blur').addEventListener('input', (e) => updateDisplay('blur', e.target.value));
+        }
+        
+        function updateFormatSettings() {
+            const select = document.getElementById('format-select');
+            const selectedKey = select.value;
+            const details = CONVERSIONS.find(c => c.key === selectedKey);
+            
+            const qualityControls = document.getElementById('quality-controls');
+            const qualityNote = document.getElementById('quality-note');
+            
+            if (details && details.supports_quality) {
+                qualityControls.style.display = 'block';
+                qualityNote.style.display = 'none';
+                document.getElementById('acc-quality').classList.remove('hidden');
+            } else {
+                qualityControls.style.display = 'none';
+                qualityNote.style.display = 'block';
+                document.getElementById('acc-quality').classList.remove('hidden'); // Keep visible but show note
+            }
+            
+            // Auto-open quality accordion if it requires action
+            if (details && !details.supports_quality) {
+                document.getElementById('acc-quality').classList.add('active');
+                document.getElementById('acc-quality').querySelector('.accordion-body').classList.add('open');
+            } else {
+                document.getElementById('acc-quality').classList.remove('active');
+                document.getElementById('acc-quality').querySelector('.accordion-body').classList.remove('open');
+            }
+        }
+        
+        // --- CORE LOGIC ---
+        
         async function init() {
             try {
                 const req = await fetch('/api/config');
@@ -796,155 +858,216 @@
                 populateSelect();
             } catch (e) {
                 console.error("Backend Disconnected", e);
+                // Optionally show a disconnection error to the user
             }
             setupEvents();
+            setupSliderListeners();
         }
 
         function populateSelect() {
             const sel = document.getElementById('format-select');
-            const conversionOptions = CONVERSIONS.filter(c => c.key !== 'ai_upscale');
-            sel.innerHTML = conversionOptions.map(c =>
-                `<option value="${c.key}" data-quality="${c.supports_quality}">${c.name}</option>`
-            ).join('');
-
-            sel.addEventListener('change', () => {
-                const opt = sel.options[sel.selectedIndex];
-                const accQ = document.getElementById('acc-quality');
-                if(opt.dataset.quality === 'true') {
-                    accQ.style.display = 'block';
-                } else {
-                    accQ.style.display = 'none';
-                }
+            sel.innerHTML = '';
+            CONVERSIONS.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.key;
+                option.textContent = c.name;
+                sel.appendChild(option);
             });
-            sel.dispatchEvent(new Event('change'));
+            updateFormatSettings();
         }
 
         function setupEvents() {
-            setupDropzone('dropzone-conv', 'file-input-conv', 'conv');
-            setupDropzone('dropzone-up', 'file-input-up', 'up');
-            document.getElementById('inp-quality').oninput = (e) => {
-                document.getElementById('quality-disp').textContent = e.target.value + '%';
-            };
-            document.getElementById('inp-opacity').oninput = (e) => {
-                document.getElementById('opacity-disp').textContent = e.target.value + '%';
-            };
-        }
+            const dropzoneConv = document.getElementById('dropzone-conv');
+            const fileInputConv = document.getElementById('file-input-conv');
 
-        function setupDropzone(dzId, inpId, mode) {
-            const dz = document.getElementById(dzId);
-            const inp = document.getElementById(inpId);
-
-            dz.onclick = () => inp.click();
-            dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag-over'); };
-            dz.ondragleave = () => dz.classList.remove('drag-over');
-            dz.ondrop = (e) => {
+            // Click listener
+            dropzoneConv.onclick = () => fileInputConv.click();
+            
+            // Drag-drop listeners
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropzoneConv.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
                 e.preventDefault();
-                dz.classList.remove('drag-over');
-                handleFile(e.dataTransfer.files[0], mode);
-            };
-            inp.onchange = (e) => handleFile(e.target.files[0], mode);
-        }
-
-        // --- CORE LOGIC ---
-        function handleFile(f, mode) {
-            if(!f || !f.type.startsWith('image/')) return alert("Image files only, please.");
-            FILE = f;
-            FILE_URL = URL.createObjectURL(f);
-            const sizeStr = (f.size / (1024*1024)).toFixed(2) + " MB";
-            if(mode === 'conv') {
-                document.getElementById('file-name-conv').textContent = f.name;
-                document.getElementById('file-size-conv').textContent = sizeStr;
-                showState('conv', 'config');
-            } else {
-                document.getElementById('file-name-up').textContent = f.name;
-                document.getElementById('file-size-up').textContent = sizeStr;
-                showState('up', 'config');
+                e.stopPropagation();
             }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzoneConv.addEventListener(eventName, () => dropzoneConv.classList.add('drag-over'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzoneConv.addEventListener(eventName, () => dropzoneConv.classList.remove('drag-over'), false);
+            });
+
+            dropzoneConv.addEventListener('drop', handleDrop, false);
+            fileInputConv.addEventListener('change', handleFileSelect, false);
         }
 
-        function resetApp(mode) {
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) processFile(files[0], 'conv');
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length) processFile(files[0], 'conv');
+        }
+
+        function processFile(f, mode) {
+            if (f.type && !f.type.startsWith('image/')) {
+                alert("Only image files are supported.");
+                return;
+            }
+            if (f.size > 500 * 1024 * 1024) { // Check against assumed 500MB limit
+                 alert("File is too large. Max size is 500MB.");
+                 return;
+            }
+
+            FILE = f;
+            FILE_URL = URL.createObjectURL(f); // Create local preview URL
+            const sizeStr = (f.size / (1024*1024)).toFixed(2) + " MB";
+            
+            // Only 'conv' mode remains
+            document.getElementById('file-name-conv').textContent = f.name;
+            document.getElementById('file-size-conv').textContent = sizeStr;
+            showState('config-conv');
+        }
+
+        function resetApp() {
+            // Clears all state for the single 'conv' mode
             FILE = null;
+            if (FILE_URL) URL.revokeObjectURL(FILE_URL);
             FILE_URL = null;
+            currentJobId = null;
             clearInterval(TIMER);
-            document.getElementById(`file-input-${mode}`).value = '';
-            showState(mode, 'upload');
+            document.getElementById(`file-input-conv`).value = '';
+            showState('upload-conv');
             document.getElementById('progress-bar').style.width = '0%';
             document.getElementById('final-actions').style.display = 'none';
             document.getElementById('compare-wrapper').style.display = 'none';
             document.getElementById('preview-area').style.display = 'none';
-            // Also hide the global result container
-            document.getElementById('state-result').style.display = 'none';
+
+            // Reset all controls to default state to ensure security and proper next run
+            document.getElementById('inp-width').value = '';
+            document.getElementById('inp-height').value = '';
+            document.getElementById('check-ar').checked = true;
+            document.getElementById('inp-quality').value = 90;
+            document.getElementById('inp-opacity').value = 100;
+            document.getElementById('inp-rotate').value = 0;
+            document.getElementById('check-flip-h').checked = false;
+            document.getElementById('check-flip-v').checked = false;
+            document.getElementById('check-grayscale').checked = false;
+            document.getElementById('check-sepia').checked = false;
+            document.getElementById('check-invert').checked = false;
+            document.getElementById('inp-brightness').value = 100;
+            document.getElementById('inp-contrast').value = 100;
+            document.getElementById('inp-sharpen').value = 0;
+            document.getElementById('inp-blur').value = 0;
+            document.getElementById('inp-border-size').value = 0;
+            document.getElementById('inp-border-color').value = '#000000';
+            updateDisplay('quality', 90, '%');
+            updateDisplay('opacity', 100, '%');
+            updateDisplay('brightness', 100, '%');
+            updateDisplay('contrast', 100, '%');
+            updateDisplay('sharpen', 0);
+            updateDisplay('blur', 0);
         }
 
         async function startJob(mode) {
-            triggerResultView();
-            startTime = Date.now();
-            const fd = new FormData();
-            fd.append('file', FILE);
-            fd.append('mode', mode);
-
-            if(mode === 'convert') {
-                fd.append('conversion_key', document.getElementById('format-select').value);
-                fd.append('settings', JSON.stringify({
-                    width: document.getElementById('inp-width').value,
-                    height: document.getElementById('inp-height').value,
-                    maintain_ar: document.getElementById('check-ar').checked,
-                    quality: document.getElementById('inp-quality').value,
-                    opacity: document.getElementById('inp-opacity').value
-                }));
-            } else {
-                fd.append('settings', JSON.stringify({
-                    upscale_res: document.getElementById('upscale-res').value
-                }));
+            if (!FILE) {
+                alert("Please select a file first.");
+                return;
             }
 
+            triggerResultView(); // Show shared result view
+            const startTime = Date.now();
+
+            const fd = new FormData();
+            fd.append('file', FILE);
+            fd.append('mode', 'convert'); // Only 'convert' remains
+            fd.append('conversion_key', document.getElementById('format-select').value);
+
+            // Collect all settings including the 10 new features
+            const settings = {
+                // Resize
+                width: document.getElementById('inp-width').value || null,
+                height: document.getElementById('inp-height').value || null,
+                maintain_ar: document.getElementById('check-ar').checked,
+                // Quality/Opacity
+                quality: document.getElementById('inp-quality').value,
+                opacity: document.getElementById('inp-opacity').value,
+                // New Transform/Filters
+                rotate_angle: document.getElementById('inp-rotate').value,
+                flip_h: document.getElementById('check-flip-h').checked,
+                flip_v: document.getElementById('check-flip-v').checked,
+                filter_grayscale: document.getElementById('check-grayscale').checked,
+                filter_sepia: document.getElementById('check-sepia').checked,
+                filter_invert: document.getElementById('check-invert').checked,
+                // New Enhancements
+                brightness: document.getElementById('inp-brightness').value,
+                contrast: document.getElementById('inp-contrast').value,
+                sharpen: document.getElementById('inp-sharpen').value,
+                blur: document.getElementById('inp-blur').value,
+                // New Border
+                border_size: document.getElementById('inp-border-size').value,
+                border_color: document.getElementById('inp-border-color').value,
+            };
+
+            fd.append('settings', JSON.stringify(settings));
+
+            document.getElementById('status-head').textContent = "Uploading File...";
+            document.getElementById('status-text').textContent = "Please wait, uploading to secure server...";
+            document.getElementById('progress-bar').style.backgroundColor = 'var(--primary)';
+
             try {
-                const req = await fetch('/api/jobs', { method:'POST', body:fd });
+                const req = await fetch('/api/jobs', {
+                    method: 'POST',
+                    body: fd
+                });
+                
                 const res = await req.json();
-                if(!req.ok) throw new Error(res.msg || "Server Error");
-                JOB_ID = res.job_id;
-                TIMER = setInterval(() => poll(mode), 1000);
+
+                if (req.status === 202) {
+                    currentJobId = res.job_id;
+                    TIMER = setInterval(() => getJobStatus(currentJobId, startTime), 1000);
+                } else {
+                    clearInterval(TIMER);
+                    document.getElementById('status-head').textContent = "Upload Failed!";
+                    document.getElementById('status-text').textContent = `Error: ${res.msg || "Unknown error."}`;
+                    document.getElementById('progress-bar').style.backgroundColor = 'var(--error)';
+                }
             } catch (e) {
-                alert("Error: " + e.message);
-                window.location.reload();
+                console.error("Upload failed:", e);
+                clearInterval(TIMER);
+                document.getElementById('status-head').textContent = "Connection Error!";
+                document.getElementById('status-text').textContent = `Could not connect to the server.`;
+                document.getElementById('progress-bar').style.backgroundColor = 'var(--error)';
             }
         }
 
-        async function poll(mode) {
+        async function getJobStatus(job_uuid, startTime) {
+            const bar = document.getElementById('progress-bar');
+            const head = document.getElementById('status-head');
+            const txt = document.getElementById('status-text');
+            const now = Date.now();
+            
             try {
-                const req = await fetch(`/api/status/${JOB_ID}`);
+                const req = await fetch(`/api/status/${job_uuid}`);
                 const res = await req.json();
 
-                const bar = document.getElementById('progress-bar');
-                const txt = document.getElementById('status-text');
-                const head = document.getElementById('status-head');
+                if (res.status === 'queued' || res.status === 'running') {
+                    const elapsed = ((now - startTime) / 1000).toFixed(0);
+                    let visualProgress = Math.max(res.progress, 1); // Ensure bar starts visible
 
-                if(res.status === 'running' || res.status === 'queued') {
-                    let currentW = parseFloat(bar.style.width) || 0;
-                    let visualProgress = Math.max(currentW, res.progress);
-
-                    if(mode === 'upscale') {
-                        const maxVisualProgress = 90;
-                        if(visualProgress < maxVisualProgress) {
-                            const elapsedSeconds = (Date.now() - startTime) / 1000;
-                            let timeBasedProgress = Math.min(maxVisualProgress, 10 + (elapsedSeconds * 2.5));
-                            visualProgress = Math.max(visualProgress, timeBasedProgress);
-                        } else {
-                            visualProgress = maxVisualProgress;
-                        }
-
-                        head.textContent = "AI Image Enhancement in Progress...";
-                        if (res.status === 'queued') {
-                             txt.textContent = "Waiting for an available AI worker...";
-                        } else if (res.progress >= 70) {
-                             txt.textContent = "AI Enhancement complete. Finalizing output file...";
-                        } else {
-                             txt.textContent = "AI is Enhancing Details (This may take 10-30 seconds)...";
-                        }
-                    } else {
-                        head.textContent = "Processing Image Conversion...";
-                        txt.textContent = res.status === 'queued' ? "Waiting in queue..." : "Processing pixels...";
-                    }
+                    // Adjust status text and progress visually
+                    head.textContent = "Processing Image Conversion...";
+                    txt.textContent = res.status === 'queued' ? 
+                        "Waiting in queue..." : 
+                        `Processing pixels... (${visualProgress}% done, ${elapsed}s elapsed)`;
+                    
                     bar.style.width = visualProgress + "%";
                 } else if (res.status === 'completed') {
                     clearInterval(TIMER);
@@ -955,40 +1078,57 @@
                     const acts = document.getElementById('final-actions');
                     acts.style.display = 'block';
                     acts.style.opacity = 0;
-                    setTimeout(() => acts.style.opacity = 1, 100);
+                    setTimeout(() => acts.style.opacity = 1, 10);
 
-                    const downloadBtn = document.getElementById('btn-download');
-                    downloadBtn.href = res.download_url;
+                    document.getElementById('download-btn').href = res.download_url;
 
-                    if (mode === 'upscale') {
-                        document.getElementById('compare-wrapper').style.display = 'block';
+                    // Setup Preview/Comparison
+                    const compBtn = document.getElementById('check-compare'); // Assuming a checkbox for compare exists
+                    
+                    const settings = JSON.parse(res.settings);
+                    
+                    // Show comparison if any of the new features or transformations were applied
+                    const isTransformed = settings.rotate_angle != 0 || 
+                                          settings.flip_h || settings.flip_v ||
+                                          settings.filter_grayscale || settings.filter_sepia || settings.filter_invert ||
+                                          settings.brightness != 100 || settings.contrast != 100 || settings.sharpen != 0 || settings.blur != 0 ||
+                                          settings.border_size != 0 || settings.width || settings.height;
+
+                    if (isTransformed) {
+                        // Comparison Preview
                         document.getElementById('preview-area').style.display = 'none';
-                        document.getElementById('comp-before').src = FILE_URL;
+                        document.getElementById('compare-wrapper').style.display = 'block';
+                        document.getElementById('comp-before').src = FILE_URL; // Original file URL
                         document.getElementById('comp-after').src = res.download_url;
-                        document.getElementById('comp-slider-input').value = 50;
                         moveSlider(50);
                     } else {
+                        // Standard Preview (for format change only)
                         document.getElementById('compare-wrapper').style.display = 'none';
                         const pbox = document.getElementById('preview-area');
                         pbox.style.display = 'block';
-                        pbox.innerHTML = `<img src="${res.download_url}" style="max-width:100%; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">`;
+                        pbox.innerHTML = `<img src="${res.download_url}" class="preview-img" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-md);">`;
                     }
+
                 } else if (res.status === 'failed') {
                     clearInterval(TIMER);
                     head.textContent = "Processing Failed!";
                     txt.textContent = `Error: ${res.log || "Unknown processing error."}`;
                     bar.style.width = "100%";
                     bar.style.backgroundColor = 'var(--error)';
+                    // Provide a restart button immediately
                     document.getElementById('final-actions').style.display = 'block';
-                    document.getElementById('final-actions').innerHTML = `<button class="btn btn-primary" onclick="window.location.reload()">Try Again</button>`;
+                    document.getElementById('final-actions').innerHTML = `<button class="btn btn-primary" onclick="resetApp()">Try Again</button>`;
                 }
             } catch(e) {
                 console.error(e);
                 clearInterval(TIMER);
                 head.textContent = "Connection Error!";
                 txt.textContent = `Could not communicate with the server. Please try again.`;
+                bar.style.backgroundColor = 'var(--error)';
             }
         }
+
+        // Start
         init();
     </script>
 </body>

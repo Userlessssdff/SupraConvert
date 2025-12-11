@@ -162,3 +162,4 @@
 [2025-12-11 16:35:33,754] INFO in _internal:  * Detected change in 'C:\\Users\\TMP\\Downloads\\convertor\\app.py', reloading
 [2025-12-11 16:35:33,822] INFO in _internal:  * Restarting with stat
 [2025-12-11 16:35:34,680] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
+[2025-12-11 16:51:14,257] WARNING in app: HF_TOKEN is missing in .env! Upscaling will fail.
